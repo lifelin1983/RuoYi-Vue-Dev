@@ -57,7 +57,7 @@ Vue `2.6.12` · Element UI `2.15.14` · vue-cli 4 · MySQL
 ## 验证命令
 
 ```bash
-mvn clean test                                       # 全量测试（56 个用例，须全绿）
+mvn clean verify -DfailIfNoTests=false               # 全量测试 + JaCoCo 覆盖率门禁（须全绿）
 # 下面两条带 -Dtest 的命令必须加 -DfailIfNoTests=false：
 # -am 会把 ruoyi-common 等模块拉进反应堆，而 -Dtest 对所有模块生效，
 # 无匹配用例的模块会报 "No tests were executed!" 直接失败（实测踩过）。
@@ -69,6 +69,12 @@ cd ruoyi-ui && npm run dev                           # 前端 :80
 
 架构约束由 ArchUnit 强制执行（模块边界、权限注解、命名、Mapper XML），
 违反即 `mvn test` 失败。规则清单见 docs/architecture/boundaries.md 第 5 节。
+
+覆盖率由 JaCoCo 在 `verify` 阶段强制执行（门禁只覆盖 `com.ruoyi.biz` 包，
+棘轮基线 service.impl 100% / domain ~50% / 整包 ~70%）。新增或修改
+`com.ruoyi.biz` 下的类必须同步补测试，否则 `mvn clean verify` 会因
+`jacoco:check` 规则 violated 而 BUILD FAILURE。规则见 `.harness/enforcement.yml`
+的 `coverage-gate`。
 
 > Windows 下若 `mvn` 报 `找不到主类 org.codehaus.plexus.classworlds.launcher.Launcher`，
 > 是 Git Bash 的路径转换问题，改用 `mvn.cmd` 即可。
@@ -91,7 +97,7 @@ cd ruoyi-ui && npm run dev                           # 前端 :80
 - `sys_product` / `sys_student` 建表 SQL 未纳入 `sql/`，新环境初始化会失败
 - 树形删除不校验子节点，会产生孤儿数据（已用 2 个 `@Disabled` 用例固化缺陷，修复即验收）
 - Controller 接口测试与前端测试尚未覆盖（P1-5 / P2-4）
-- CI 门禁与 JaCoCo 覆盖率门槛未接入：架构约束目前**仅本地 `mvn test` 生效**，无法阻止违规代码合入
+- CI 门禁已接入（`.github/workflows/ci.yml`，含 JaCoCo 覆盖率门禁）；仅 pre-commit Hook 与 `dependency-direction` 约束扫描未落地（增强项，非阻塞）
 
 改动高风险区域（SecurityConfig、JWT 过滤器、生成器模板等）前，
 先查 docs/architecture/overview.md 第 8 节的风险清单。

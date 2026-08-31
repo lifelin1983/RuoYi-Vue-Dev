@@ -7,9 +7,8 @@ name: CI
 #   Gate 1  docs-freshness   文档漂移（秒级，不需要 JVM）
 #   Gate 2  build-and-test   架构约束 + 全量测试（需要 Redis service）
 #
-# 注意：本仓库尚未纳入 git（无 .git / 无 remote），此文件在推送到
-# GitHub 并启用 Actions 之后才真正生效。若使用 GitLab / Gitee，
-# 需要改写为 .gitlab-ci.yml，两者的 job 内容完全一致。
+# 已推送至 GitHub（私有仓库 RuoYi-Vue-Dev），Actions 默认启用即生效。
+# 若迁移到 GitLab / Gitee，需改写为 .gitlab-ci.yml，job 内容一致。
 
 on:
   push:
@@ -80,8 +79,13 @@ jobs:
           -Dtest=ArchitectureRulesTest,MapperXmlRulesTest
           -DfailIfNoTests=false
 
-      - name: Gate 2b - full test suite
-        run: mvn -B clean test
+      # clean verify 才会触发 JaCoCo 的 report + check 两个 goal：
+      #   report 生成 target/site/jacoco/ 覆盖率报告
+      #   check  按 enforcement.yml 的 coverage-baseline 规则做门禁校验
+      # 当前基线阶段 haltOnFailure=false（不阻断合入，只暴露数字），
+      # 待 ruoyi-system 等模块补上单测后再翻转为 true。
+      - name: Gate 2b - full test suite + coverage gate
+        run: mvn -B clean verify -DfailIfNoTests=false
 
       - name: Upload surefire reports
         if: always()
@@ -89,4 +93,12 @@ jobs:
         with:
           name: surefire-reports
           path: '**/target/surefire-reports/**'
+          if-no-files-found: ignore
+
+      - name: Upload JaCoCo coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-reports
+          path: '**/target/site/jacoco/**'
           if-no-files-found: ignore

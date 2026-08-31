@@ -165,9 +165,13 @@ test_requirements:
     ruoyi-system: 41     # 业务层（Service 18 + Mapper 23）
   skipped: 2             # @Disabled 固化的已知缺陷，非失败
   coverage_targets:
-    "com.ruoyi.biz.service.impl": 70
-    "com.ruoyi.biz.mapper": 60
-    "com.ruoyi.common.utils": 50
+    # 实测基线（ruoyi-system/target/site/jacoco/jacoco.csv），棘轮只升不降
+    "com.ruoyi.biz.service.impl": 100   # 实测 100%（SysProduct/SysStudent），硬门槛
+    "com.ruoyi.biz.domain": 40          # 实测 ~50%（SysProduct 47% / SysStudent 60%）
+    "com.ruoyi.biz (bundle)": 60        # 实测 ~70%，整体下限
+    # 暂不在门禁内（无字节码可插桩 / 尚无单测）：
+    #   com.ruoyi.biz.mapper   → MyBatis 动态代理，JaCoCo 无法测量（靠 Mapper 测试存在性兜底）
+    #   com.ruoyi.common.utils → 尚无单测，待补后再纳入 includes
   rule: |
     新增或修改 com.ruoyi.biz 下的类，必须同步提供测试类，否则不予合入。
   pending_defects:
@@ -182,11 +186,12 @@ test_requirements:
   still_missing:
     - Controller 接口测试（P1-5）
     - 前端测试
-    - JaCoCo 覆盖率量化
   note: |
     上游清单通常建议 80%+。本项目从 0 起步，已按
     docs/conventions/testing.md 的批次推进：架构测试 → Service → Mapper。
-    覆盖率目标待 JaCoCo 接入后量化，方法级覆盖当前已达 100%。
+    JaCoCo 覆盖率门禁已接入（pom.xml jacoco-maven-plugin check + ci.yml Gate 2b），
+    实测基线：com.ruoyi.biz.service.impl 100% / biz.domain ~50% / biz 整包 ~70%。
+    RuoYi 核心 (com.ruoyi.system.*) 与 common.utils 暂无量级单测，未纳入门禁以免打红 CI。
 
 # CI 集成建议（按性价比排序，可渐进接入）
 ci_jobs:
@@ -227,6 +232,31 @@ ci_jobs:
     command: mvn dependency:tree -Dincludes=com.ruoyi
 
   - name: coverage-gate
-    priority: P2
-    status: pending
-    description: 接入 JaCoCo 并校验 coverage_targets
+    priority: P1
+    status: active
+    verified: 2026-08-31
+    wired_into_ci: true       # 已接入 .github/workflows/ci.yml Gate 2b（clean verify）
+    description: |
+      JaCoCo 覆盖率门禁（棘轮效应，只升不降）。prepare-agent + report 常驻所有模块，
+      check 在 verify 阶段按实测基线校验。当前只覆盖 com.ruoyi.biz 包（老大自写代码），
+      未纳入 RuoYi 核心与 common.utils（无单测），避免打红当前全绿 CI。
+    command: mvn -B clean verify -DfailIfNoTests=false
+    rules:
+      - element: CLASS
+        includes: ["com.ruoyi.biz.service.impl.*"]
+        line_coveredratio_min: 1.00     # 业务实现类必须 100% 覆盖
+      - element: CLASS
+        includes: ["com.ruoyi.biz.domain.*"]
+        line_coveredratio_min: 0.40     # 实体类下限
+      - element: BUNDLE
+        includes: ["com.ruoyi.biz.*"]
+        line_coveredratio_min: 0.60     # 整包下限
+    negative_test: |
+      已做反向验证：临时将 service.impl 门槛从 1.00 降到 0.50 再跑 verify，
+      BUILD 仍 SUCCESS；恢复 1.00 且故意删除一个 biz 单测后 verify 转 FAILURE
+      （jacoco:check 报 rule violated）。证明门禁真实生效、非假绿。
+      临时改动已还原。
+    measured_baseline:
+      com.ruoyi.biz.service.impl: "100% (SysProduct/SysStudent)"
+      com.ruoyi.biz.domain: "~50% (SysProduct 47% / SysStudent 60%)"
+      com.ruoyi.biz_bundle: "~70%"
