@@ -1,7 +1,6 @@
 package com.ruoyi.biz.mapper;
 
 import java.util.List;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
@@ -167,18 +166,12 @@ class SysProductMapperTest
     }
 
     /**
-     * 已知缺口（P1-2 前置）：XML 的 where 目前只支持 productName，不支持 parentId。
+     * 验收用例（P1-2 前置已修复）：XML 的 where 已支持 parentId 过滤。
      *
-     * 这导致 Service 层无法实现「删除父节点前检查是否有子节点」——查不出来。
-     * 修复时需在此处补充：
-     *
-     *   <if test="parentId != null"> and parent_id = #{parentId}</if>
-     *
-     * 然后移除本用例的 @Disabled。
+     * 查询 parentId=100 应返回其下 2 个子节点（101/102）。
      */
     @Test
-    @Disabled("P1-2 前置：SysProductMapper.xml 的 where 未支持 parent_id 条件，修复后移除本注解")
-    @DisplayName("selectSysProductList - 按 parentId 过滤（当前 XML 不支持）")
+    @DisplayName("selectSysProductList - 按 parentId 过滤返回子节点")
     void selectSysProductList_byParentId_shouldFilter()
     {
         SysProduct query = new SysProduct();

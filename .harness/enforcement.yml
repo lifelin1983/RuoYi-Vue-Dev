@@ -158,12 +158,12 @@ persistence:
 # 测试门槛
 test_requirements:
   status: partially_met
-  updated: 2026-08-31
+  updated: 2026-09-01
   total_tests: 56
   breakdown:
     ruoyi-admin: 15      # 架构约束
     ruoyi-system: 41     # 业务层（Service 18 + Mapper 23）
-  skipped: 2             # @Disabled 固化的已知缺陷，非失败
+  skipped: 0             # P1-2 两个 @Disabled 用例已于 2026-09-01 修复并启用
   coverage_targets:
     # 实测基线（ruoyi-system/target/site/jacoco/jacoco.csv），棘轮只升不降
     "com.ruoyi.biz.service.impl": 100   # 实测 100%（SysProduct/SysStudent），硬门槛
@@ -174,18 +174,21 @@ test_requirements:
     #   com.ruoyi.common.utils → 尚无单测，待补后再纳入 includes
   rule: |
     新增或修改 com.ruoyi.biz 下的类，必须同步提供测试类，否则不予合入。
-  pending_defects:
+  resolved_defects:
     - id: P1-2
       test: SysProductServiceImplTest.deleteSysProductByProductIds_hasChildren_shouldThrowServiceException
       issue: 删除父节点未校验子节点，产生孤儿数据
-      action: 修复后移除 @Disabled
+      fix: "2026-09-01 · deleteSysProductByProductIds 先按 parentId 查子节点，存在即抛 ServiceException(\"存在下级产品，不允许删除\")；Mapper XML where 补 parent_id 条件"
+      status: passing   # 用例已启用且全绿
     - id: P1-2-prereq
       test: SysProductMapperTest.selectSysProductList_byParentId_shouldFilter
       issue: SysProductMapper.xml 的 where 不支持 parent_id 条件
-      action: 补充 if 分支后移除 @Disabled
+      fix: "2026-09-01 · selectSysProductList 的 <where> 补充 <if test=\"parentId != null\"> and parent_id = #{parentId}</if>"
+      status: passing
   still_missing:
     - Controller 接口测试（P1-5）
     - 前端测试
+    - deleteSysProductByProductId（单个删除）同口径子节点防护（建议项，未做）
   note: |
     上游清单通常建议 80%+。本项目从 0 起步，已按
     docs/conventions/testing.md 的批次推进：架构测试 → Service → Mapper。

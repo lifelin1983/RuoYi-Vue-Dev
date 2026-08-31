@@ -2,7 +2,6 @@ package com.ruoyi.biz.service.impl;
 
 import java.util.Collections;
 import java.util.List;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -179,30 +178,19 @@ class SysProductServiceImplTest
     }
 
     /**
-     * 已知缺陷（P1-2）：删除父节点时未校验子节点，会产生孤儿数据。
+     * 验收用例（P1-2 已修复）：删除父节点前应校验子节点，存在则抛 ServiceException。
      *
-     * 当前实现直接透传给 Mapper 的 delete ... where product_id in (...)，
-     * 删除父节点后其子节点在前端树里将永远不可见。
-     *
-     * 修复步骤：
-     *   1. 在 SysProductMapper.xml 的 where 中补充 parent_id 条件（当前只支持 productName）
-     *   2. 在 SysProductServiceImpl.deleteSysProductByProductIds 中先查子节点，
-     *      存在则 throw new ServiceException("存在下级产品，不允许删除")
-     *   3. 移除本用例的 @Disabled，测试应转为通过
-     *
-     * 参考：docs/plans/current-sprint.md 的 P1-2
+     * Service 在 deleteSysProductByProductIds 中先按 parentId 查子节点，
+     * 命中即抛 "存在下级产品，不允许删除"，避免产生孤儿数据。
      */
     @Test
-    @Disabled("P1-2 待修复：树形删除未校验子节点。修复后移除本注解，用例应转为通过")
-    @DisplayName("删除有子节点的父节点 - 应抛 ServiceException（当前实现未校验，缺陷）")
+    @DisplayName("删除有子节点的父节点 - 应抛 ServiceException（P1-2 修复后）")
     void deleteSysProductByProductIds_hasChildren_shouldThrowServiceException()
     {
-        // given：父节点 100 下存在子节点 101
+        // given：父节点 100 下存在子节点
         SysProduct child = buildProduct(101L, "冲压模");
         child.setParentId(100L);
-        SysProduct childQuery = new SysProduct();
-        childQuery.setParentId(100L);
-        given(sysProductMapper.selectSysProductList(childQuery))
+        given(sysProductMapper.selectSysProductList(any(SysProduct.class)))
             .willReturn(Collections.singletonList(child));
 
         // when & then

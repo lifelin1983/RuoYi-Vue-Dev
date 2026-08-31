@@ -159,7 +159,7 @@
       <!-- 核心心法 -->
       <tr><td colspan="4" class="pillar">核心心法 / 棘轮（Ratchet）</td></tr>
       <tr><td>失败沉淀为永久规则</td><td><span class="badge b-ok">符合</span></td>
-        <td>2 个 <code>@Disabled</code> 用例固化已知缺陷（P1-2 孤儿数据），修复即验收标准</td>
+        <td>P1-2 孤儿数据缺陷已于 2026-09-01 修复并启用验收用例（原 2 个 <code>@Disabled</code> → 通过），印证棘轮闭环</td>
         <td>—</td></tr>
       <tr><td>验证回路（先验证再交付）</td><td><span class="badge b-ok">符合</span></td>
         <td>CLAUDE.md 明确"验证命令"，Agent 跑 <code>mvn test</code> 自检</td>
@@ -214,7 +214,7 @@
   <div class="card">
     <ul>
       <li>✅ <code>ArchitectureRulesTest.java</code> 与 <code>MapperXmlRulesTest.java</code> 真实存在，注释声明"把 boundaries.md 铁律编码成可执行断言"。</li>
-      <li>✅ 2 个 <code>@Disabled</code> 缺陷固化用例在位（<code>SysProductServiceImplTest</code> / <code>SysProductMapperTest</code>），印证棘轮实践。</li>
+      <li>✅ P1-2 孤儿数据缺陷已闭环：<code>SysProductServiceImplTest</code> / <code>SysProductMapperTest</code> 两处验收用例由 <code>@Disabled</code> 转为通过（2026-09-01），印证棘轮实践。</li>
       <li>✅ <code>docs/reference/api-spec.yaml</code> 669 行，确为实质契约而非占位。</li>
       <li>✅ <code>.github/workflows/ci.yml</code> 已存在并通电（Gate 1 文档新鲜度 / Gate 2 架构约束+全量测试+<b>JaCoCo 覆盖率门禁</b>），架构约束已从"仅本地强制"升级为"不可合入的 CI 门禁"。</li>
       <li>✅ CLAUDE.md 与 docs 全部互链指向真实文件（knowledge-freshness 人工通过，但自动化缺失）。</li>

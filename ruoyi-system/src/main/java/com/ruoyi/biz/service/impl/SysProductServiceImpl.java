@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import com.ruoyi.biz.mapper.SysProductMapper;
 import com.ruoyi.biz.domain.SysProduct;
 import com.ruoyi.biz.service.ISysProductService;
+import com.ruoyi.common.exception.ServiceException;
 
 /**
  * 产品管理Service业务层处理
@@ -76,6 +77,17 @@ public class SysProductServiceImpl implements ISysProductService
     @Override
     public int deleteSysProductByProductIds(Long[] productIds)
     {
+        // P1-2 修复：删除前先校验是否存在子节点，避免产生孤儿数据
+        for (Long productId : productIds)
+        {
+            SysProduct childQuery = new SysProduct();
+            childQuery.setParentId(productId);
+            List<SysProduct> children = sysProductMapper.selectSysProductList(childQuery);
+            if (children != null && !children.isEmpty())
+            {
+                throw new ServiceException("存在下级产品，不允许删除");
+            }
+        }
         return sysProductMapper.deleteSysProductByProductIds(productIds);
     }
 

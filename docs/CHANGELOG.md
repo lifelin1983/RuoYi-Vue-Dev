@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-09-01 · v3.9.2-harness-p1b · 修复 P1-2 树形删除孤儿数据缺陷
+
+- **涉及模块**：`ruoyi-system/.../biz/service/impl/SysProductServiceImpl.java`、`ruoyi-system/.../resources/mapper/biz/SysProductMapper.xml`、两个测试类、`enforcement.yml`
+- **原功能**：
+  - `deleteSysProductByProductIds` 直接透传 `delete ... where product_id in (...)`，**删除父节点不校验子节点**，子节点变为前端树中永远不可见的孤儿数据。
+  - `SysProductMapper.selectSysProductList` 的 `<where>` 只支持 `productName`，**不支持 `parent_id` 过滤**，导致 Service 层根本无从判断"是否有子节点"。
+  - 两处验收用例以 `@Disabled` 固化（已知缺陷：P1-2、P1-2-prereq）。
+- **更新后功能**：
+  - `deleteSysProductByProductIds` 在删除前遍历每个 productId，按 `parentId` 查子节点；命中即抛 `ServiceException("存在下级产品，不允许删除")`。
+  - `selectSysProductList` 的 `<where>` 新增 `<if test="parentId != null"> and parent_id = #{parentId}</if>`。
+  - 两处 `@Disabled` 用例已启用：
+    - `SysProductServiceImplTest.deleteSysProductByProductIds_hasChildren_shouldThrowServiceException`（桩改 `any(SysProduct.class)` 匹配）
+    - `SysProductMapperTest.selectSysProductList_byParentId_shouldFilter`（断言 `parentId=100` 返回 2 条子节点）
+  - `enforcement.yml`：`pending_defects` → `resolved_defects`（均 `passing`），`@Disabled` 计数 2 → 0。
+- **变更原因**：Harness 第一心法「Agent 失败 = Harness 失败」——把已知缺陷从 `@Disabled` 占位变为真正修复并验收，闭环 P1-2。
+- **影响范围**：批量删除产品（含任意有子节点的父节点）现在会被拦截并提示，不再产生孤儿数据；单条删除 `deleteSysProductByProductId` 仍**未**加同口径防护（见 `still_missing`，建议项）。
+- **验证 / 回归点**：
+  - ✅ 本地 `mvn -B verify -pl ruoyi-system -am` → BUILD SUCCESS（41 用例全绿，含新启用 2 个）。
+  - ✅ JaCoCo `check` 门禁仍通过（`com.ruoyi.biz.service.impl` 维持 100% 行覆盖，新分支两个用例均覆盖）。
+  - ⚠️ 回归注意：单条删除若需同等防护，应在 `deleteSysProductByProductId` 复用同一段子节点校验逻辑（当前未做）。
+
+---
+
 ## 2026-08-31 · v3.9.2-harness-p1 · JaCoCo 覆盖率门禁接入
 
 - **涉及模块**：`pom.xml`（父 POM）、`.github/workflows/ci.yml`、`/enforcement.yml`、`.claude/CLAUDE.md`、`Harness-Engineering-合规评估报告.html`
