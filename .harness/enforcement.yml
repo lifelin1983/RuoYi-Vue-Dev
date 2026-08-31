@@ -1,0 +1,232 @@
+# Harness Engineering — 机器可读的架构约束声明
+#
+# 这是 Pillar 2（Architectural Constraints）的配置入口。
+# 规则的自然语言说明在 docs/architecture/boundaries.md，
+# 本文件只做结构化声明，供 CI 与 AI Agent 消费。
+#
+# 核心原则：Agent failures are harness failures.
+# 当 Agent 违反规则时，先补这里的约束，而不是去改 Agent 的提示词。
+
+version: 1
+
+project:
+  name: RuoYi-Vue
+  version: 3.9.2
+  java: "1.8"
+  spring_boot: 2.5.15
+
+# 文档真相源：规则的自然语言版本
+docs:
+  architecture: docs/architecture/overview.md
+  boundaries: docs/architecture/boundaries.md
+  conventions: docs/conventions/README.md
+  testing: docs/conventions/testing.md
+  api_spec: docs/reference/api-spec.yaml
+  error_codes: docs/reference/error-codes.md
+  agent_guide: .claude/CLAUDE.md
+
+# 强制执行机制
+enforcement:
+  engine: archunit
+  engine_version: 1.3.0
+  command: mvn test -pl ruoyi-admin -am -Dtest=ArchitectureRulesTest,MapperXmlRulesTest -DfailIfNoTests=false
+  test_classes:
+    - ruoyi-admin/src/test/java/com/ruoyi/architecture/ArchitectureRulesTest.java
+    - ruoyi-admin/src/test/java/com/ruoyi/architecture/MapperXmlRulesTest.java
+  on_violation: fail   # 违反即失败，不降级为警告
+
+# 模块依赖方向：只允许自上而下，禁止反向与成环
+modules:
+  ruoyi-common:
+    layer: 0
+    depends_on: []          # 只允许第三方依赖
+    allow_business_logic: false
+    note: 无状态工具 / 常量 / 枚举 / 注解 / 异常 / 通用基类
+
+  ruoyi-system:
+    layer: 1
+    depends_on: [ruoyi-common]
+    packages: [com.ruoyi.system.., com.ruoyi.biz.domain, com.ruoyi.biz.mapper, com.ruoyi.biz.service]
+
+  ruoyi-quartz:
+    layer: 1
+    depends_on: [ruoyi-common]
+    packages: [com.ruoyi.quartz..]
+
+  ruoyi-generator:
+    layer: 1
+    depends_on: [ruoyi-common]
+    packages: [com.ruoyi.generator..]
+
+  ruoyi-framework:
+    layer: 2
+    depends_on: [ruoyi-system]
+    packages: [com.ruoyi.framework..]
+
+  ruoyi-admin:
+    layer: 3
+    depends_on: [ruoyi-framework, ruoyi-quartz, ruoyi-generator]
+    packages: [com.ruoyi.web.., com.ruoyi.biz.controller]
+    note: 唯一可执行模块，所有 Controller 落在这里
+
+# 禁止的 import 模式
+banned_imports:
+  - rule: common-no-internal-deps
+    from: com.ruoyi.common..
+    to:
+      - com.ruoyi.system..
+      - com.ruoyi.framework..
+      - com.ruoyi.quartz..
+      - com.ruoyi.generator..
+      - com.ruoyi.web..
+      - com.ruoyi.biz..
+    severity: high
+    message: |
+      ruoyi-common 必须零业务依赖。
+      修复：把业务代码移回 com.ruoyi.biz 或 com.ruoyi.system。
+
+  - rule: no-lombok
+    from: "**"
+    to: [lombok..]
+    severity: high
+    message: |
+      本仓库未引入 Lombok，getter/setter 全部手写。
+      修复：删除 @Data/@Getter，手写 getter/setter 与 serialVersionUID。
+
+  - rule: controller-no-mapper
+    from: "**/*Controller"
+    to: ["**/*Mapper"]
+    severity: high
+    message: |
+      Controller 不得直接注入 Mapper，必须经 Service 接口。
+      修复：在 IXxxService 新增方法，Controller 改为调用 Service。
+
+# 命名与落位约束
+naming:
+  service_interface:
+    package: com.ruoyi.biz.service..
+    prefix: "I"
+    example: ISysProductService
+  service_impl:
+    package: com.ruoyi.biz.service.impl..
+    suffix: ServiceImpl
+    example: SysProductServiceImpl
+  mapper_interface:
+    package: "..mapper.."
+    suffix: Mapper
+  mapper_xml:
+    location: "src/main/resources/mapper/**/"
+    suffix: Mapper.xml
+    note: |
+      application.yml 的 mybatis.mapperLocations = classpath*:mapper/**/*Mapper.xml
+      命名不规范不会被扫描，运行时才报 BindingException
+
+# 安全红线
+security:
+  - rule: controller-methods-must-be-secured
+    target: com.ruoyi.biz.controller..
+    require_annotation: org.springframework.security.access.prepost.PreAuthorize
+    severity: critical
+    message: |
+      业务 Controller 的每个公开方法都必须带 @PreAuthorize。
+      漏注解 = 真实越权漏洞（前端隐藏按钮不算防护）。
+      权限串需与 sys_menu.perms 及前端 v-hasPermi 三者一致。
+
+  - rule: no-raw-sql-in-java
+    severity: high
+    message: |
+      SQL 只能写在 Mapper XML，禁止在 Java 中拼接。
+      排序字段必须过 SqlUtil.escapeOrderBySql() 防注入。
+
+# 数据层约束
+persistence:
+  - rule: entities-must-extend-base-entity
+    package: com.ruoyi.biz.domain..
+    require_superclass: com.ruoyi.common.core.domain.BaseEntity
+    severity: medium
+    note: |
+      树形实体继承 TreeEntity（TreeEntity 本身继承 BaseEntity）。
+      脚手架 XML 依赖 create_by/create_time 等审计列。
+
+  - rule: field-sync-required
+    severity: medium
+    note: |
+      mapUnderscoreToCamelCase 已关闭。
+      新增字段必须同步三处：实体 / resultMap / selectXxxVo，漏一处查出 null。
+    enforcement: manual_review   # 暂无法自动化，靠 Code Review 清单
+
+# 测试门槛
+test_requirements:
+  status: partially_met
+  updated: 2026-08-31
+  total_tests: 56
+  breakdown:
+    ruoyi-admin: 15      # 架构约束
+    ruoyi-system: 41     # 业务层（Service 18 + Mapper 23）
+  skipped: 2             # @Disabled 固化的已知缺陷，非失败
+  coverage_targets:
+    "com.ruoyi.biz.service.impl": 70
+    "com.ruoyi.biz.mapper": 60
+    "com.ruoyi.common.utils": 50
+  rule: |
+    新增或修改 com.ruoyi.biz 下的类，必须同步提供测试类，否则不予合入。
+  pending_defects:
+    - id: P1-2
+      test: SysProductServiceImplTest.deleteSysProductByProductIds_hasChildren_shouldThrowServiceException
+      issue: 删除父节点未校验子节点，产生孤儿数据
+      action: 修复后移除 @Disabled
+    - id: P1-2-prereq
+      test: SysProductMapperTest.selectSysProductList_byParentId_shouldFilter
+      issue: SysProductMapper.xml 的 where 不支持 parent_id 条件
+      action: 补充 if 分支后移除 @Disabled
+  still_missing:
+    - Controller 接口测试（P1-5）
+    - 前端测试
+    - JaCoCo 覆盖率量化
+  note: |
+    上游清单通常建议 80%+。本项目从 0 起步，已按
+    docs/conventions/testing.md 的批次推进：架构测试 → Service → Mapper。
+    覆盖率目标待 JaCoCo 接入后量化，方法级覆盖当前已达 100%。
+
+# CI 集成建议（按性价比排序，可渐进接入）
+ci_jobs:
+  - name: architecture-boundary-check
+    priority: P0
+    status: active            # 命令实测通过，且已接入 .github/workflows/ci.yml Gate 2a
+    wired_into_ci: true       # 配置已接；推送到 GitHub 并启用 Actions 后自动生效
+    verified: 2026-08-30
+    # -am 必需：不加会把兄弟模块当外部依赖去仓库找，导致
+    # Could not find artifact com.ruoyi:ruoyi-framework
+    # -DfailIfNoTests=false 必需：否则 ruoyi-common 等无匹配模块会报
+    # "No tests were executed!" 直接失败（实测踩过）
+    command: mvn test -pl ruoyi-admin -am -Dtest=ArchitectureRulesTest,MapperXmlRulesTest -DfailIfNoTests=false
+    negative_test: |
+      已做反向验证：临时注入一个无 @PreAuthorize 的 Controller，规则成功拦截，
+      精确定位到 TempUnsecuredController.leak() 第 21 行，错误信息含完整修复指引。
+      验证后临时文件已清理。
+
+  - name: knowledge-freshness
+    priority: P0
+    status: active
+    verified: 2026-08-31
+    wired_into_ci: true       # 已接入 .github/workflows/ci.yml Gate 1
+    command: bash scripts/check-doc-links.sh --strict
+    description: |
+      校验 CLAUDE.md 与 docs/ 中的引用指向真实文件、交叉链接可解析，
+      并检测"文档称零测试但源码已有用例"这类自相矛盾。
+      最便宜且收益最高，防止文档漂移。
+    negative_test: |
+      已做反向验证：在临时 fixture 中注入 1 处断链 + 1 个不存在的 test_classes 路径，
+      脚本精确报出 2 个 ERROR 并 exit 1；合法的根相对链接与豁免项均未误报。
+      校验器自身也曾误判（ArchUnit 规则是 @ArchTest 字段而非 @Test 方法），
+      已修正为同时统计两者 —— 校验器也必须被反向测试。
+
+  - name: dependency-direction
+    priority: P1
+    status: pending
+    command: mvn dependency:tree -Dincludes=com.ruoyi
+
+  - name: coverage-gate
+    priority: P2
+    status: pending
+    description: 接入 JaCoCo 并校验 coverage_targets

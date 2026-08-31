@@ -1,0 +1,65 @@
+######################################################################
+# Build Tools
+
+.gradle
+/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+######################################################################
+# IDE
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### JRebel ###
+rebel.xml
+
+### NetBeans ###
+nbproject/private/
+build/*
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+######################################################################
+# Others
+*.log
+*.xml.versionsBackup
+*.swp
+
+!*/build/*.java
+!*/build/*.html
+!*/build/*.xml
+
+######################################################################
+# Node / Frontend (RuoYi-Vue 前端在 ruoyi-ui/)
+node_modules/
+ruoyi-ui/dist/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+######################################################################
+# Logs
+logs/
+
+######################################################################
+# OS
+.DS_Store
+Thumbs.db

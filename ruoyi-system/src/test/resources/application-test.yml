@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    # MODE=MySQL 让 H2 尽量兼容 MySQL 语法；CASE_INSENSITIVE_IDENTIFIERS 容忍大小写差异
+    url: jdbc:h2:mem:ruoyi_biz_test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  sql:
+    init:
+      # 建表与数据由 @Sql 显式控制，避免 Spring 自动执行与测试脚本冲突
+      mode: never
+
+mybatis:
+  # 与 application.yml 保持一致：XML 中使用短类名（SysProduct / SysStudent）
+  type-aliases-package: com.ruoyi.**.domain
+  mapper-locations: classpath*:mapper/**/*Mapper.xml
+  # 注意：这里不设置 configLocation。
+  # 主工程的 mybatis/mybatis-config.xml 位于 ruoyi-admin 模块，本模块测试拿不到，
+  # 且它只配置 cacheEnabled / logImpl 等非必要项，缺失不影响 SQL 正确性验证。
+
+logging:
+  level:
+    com.ruoyi.biz.mapper: debug

@@ -1,0 +1,669 @@
+openapi: 3.0.3
+
+info:
+  title: RuoYi-Vue 接口文档（业务模块 biz）
+  version: 3.9.2
+  description: |
+    RuoYi-Vue `3.9.2` 自有业务模块 `com.ruoyi.biz` 的 REST 接口契约。
+
+    **约定**
+    - 全部接口需携带 `Authorization: Bearer <token>`，由 `JwtAuthenticationTokenFilter` 校验
+    - 方法级鉴权走 Spring Security `@PreAuthorize("@ss.hasPermi('模块:功能:操作')")`
+    - 统一响应体：`AjaxResult` = `{code, msg, data}`；分页响应体：`TableDataInfo` = `{total, rows, code, msg}`
+    - 业务码 `200` 成功、`601` 警告、`500` 失败，完整列表见 [error-codes.md](./error-codes.md)
+
+    **来源**
+    - `ruoyi-admin/src/main/java/com/ruoyi/biz/controller/SysProductController.java`
+    - `ruoyi-admin/src/main/java/com/ruoyi/biz/controller/SysStudentController.java`
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: 本地开发（后端直连）
+  - url: /dev-api
+    description: 前端代理前缀（VUE_APP_BASE_API）
+  - url: /
+    description: 生产（同域部署）
+
+tags:
+  - name: product
+    description: 产品管理（树形结构，不分页）
+  - name: student
+    description: 学生管理（平表，分页）
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  ############################################################################
+  # 产品管理 /biz/product
+  ############################################################################
+
+  /biz/product/list:
+    get:
+      tags: [product]
+      summary: 查询产品管理列表
+      operationId: listProduct
+      description: |
+        树形数据，**不分页**，一次性返回全部节点。
+        前端用 `handleTree(data, "productId", "parentId")` 组装成树。
+
+        > ⚠️ 无分页存在性能隐患，见 docs/plans/current-sprint.md P1-1
+      parameters:
+        - name: productName
+          in: query
+          required: false
+          description: 产品名称，模糊匹配（`like concat('%', ?, '%')`）
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          description: 产品状态（0正常 1停用）
+          schema:
+            type: string
+            enum: ["0", "1"]
+        - name: params[beginTime]
+          in: query
+          required: false
+          description: 创建时间起（BaseEntity.params 透传）
+          schema:
+            type: string
+            format: date-time
+        - name: params[endTime]
+          in: query
+          required: false
+          description: 创建时间止（BaseEntity.params 透传）
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/AjaxResult"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/SysProduct"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /biz/product/export:
+    post:
+      tags: [product]
+      summary: 导出产品管理列表
+      operationId: exportProduct
+      description: |
+        直接向 `HttpServletResponse` 写出 Excel 二进制流，不走 `AjaxResult` 包装。
+        前端需通过 `utils/request.js` 的 `download()` 调用（`responseType: blob`）。
+      parameters:
+        - name: productName
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Excel 文件流
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /biz/product/{productId}:
+    get:
+      tags: [product]
+      summary: 获取产品管理详细信息
+      operationId: getProduct
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          description: 产品主键
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/AjaxResult"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/SysProduct"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /biz/product:
+    post:
+      tags: [product]
+      summary: 新增产品管理
+      operationId: addProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SysProduct"
+      responses:
+        "200":
+          description: 操作结果（影响行数 > 0 视为成功）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    put:
+      tags: [product]
+      summary: 修改产品管理
+      operationId: updateProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SysProduct"
+      responses:
+        "200":
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /biz/product/{productIds}:
+    delete:
+      tags: [product]
+      summary: 删除产品管理（支持批量）
+      operationId: delProduct
+      description: |
+        路径变量为**复数**，支持逗号分隔批量删除，后端接收 `Long[] productIds`。
+
+        > ⚠️ 当前实现**不校验子节点**，删除父节点会产生孤儿数据，见 P1-2
+      parameters:
+        - name: productIds
+          in: path
+          required: true
+          description: 产品主键，多个用逗号分隔，如 `1,2,3`
+          schema:
+            type: string
+          example: "1,2,3"
+      responses:
+        "200":
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          description: 存在下级产品等业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+
+  ############################################################################
+  # 学生管理 /biz/student
+  ############################################################################
+
+  /biz/student/list:
+    get:
+      tags: [student]
+      summary: 查询学生管理列表
+      operationId: listStudent
+      description: |
+        分页查询。分页参数由 `BaseController.startPage()` 从请求中读取，
+        响应走 `getDataTable()` 包装成 `TableDataInfo`。
+      parameters:
+        - $ref: "#/components/parameters/pageNum"
+        - $ref: "#/components/parameters/pageSize"
+        - $ref: "#/components/parameters/orderByColumn"
+        - $ref: "#/components/parameters/isAsc"
+        - name: studentName
+          in: query
+          required: false
+          description: 学生名称，模糊匹配
+          schema:
+            type: string
+        - name: studentAge
+          in: query
+          required: false
+          description: 年龄
+          schema:
+            type: integer
+        - name: studentHobby
+          in: query
+          required: false
+          description: 爱好（0代码 1音乐 2电影）
+          schema:
+            type: string
+            enum: ["0", "1", "2"]
+        - name: studentSex
+          in: query
+          required: false
+          description: 性别（0男 1女 2未知）
+          schema:
+            type: string
+            enum: ["0", "1", "2"]
+        - name: studentStatus
+          in: query
+          required: false
+          description: 状态（0正常 1停用）
+          schema:
+            type: string
+            enum: ["0", "1"]
+      responses:
+        "200":
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/TableDataInfo"
+                  - type: object
+                    properties:
+                      rows:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/SysStudent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /biz/student/export:
+    post:
+      tags: [student]
+      summary: 导出学生管理列表
+      operationId: exportStudent
+      description: 直接写出 Excel 二进制流，前端用 `download()` 调用。
+      parameters:
+        - name: studentName
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Excel 文件流
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /biz/student/{studentId}:
+    get:
+      tags: [student]
+      summary: 获取学生管理详细信息
+      operationId: getStudent
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          description: 学生主键
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/AjaxResult"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/SysStudent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /biz/student:
+    post:
+      tags: [student]
+      summary: 新增学生管理
+      operationId: addStudent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SysStudent"
+      responses:
+        "200":
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    put:
+      tags: [student]
+      summary: 修改学生管理
+      operationId: updateStudent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SysStudent"
+      responses:
+        "200":
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /biz/student/{studentIds}:
+    delete:
+      tags: [student]
+      summary: 删除学生管理（支持批量）
+      operationId: delStudent
+      parameters:
+        - name: studentIds
+          in: path
+          required: true
+          description: 学生主键，多个用逗号分隔，如 `1,2,3`
+          schema:
+            type: string
+          example: "1,2,3"
+      responses:
+        "200":
+          description: 操作结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JJWT 签发的 token。请求头：`Authorization: Bearer <token>`。
+        默认有效期 30 分钟（`token.expireTime`），每次请求由 `TokenService` 自动续期。
+
+  parameters:
+    pageNum:
+      name: pageNum
+      in: query
+      required: false
+      description: 页码，从 1 开始
+      schema:
+        type: integer
+        default: 1
+    pageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: 每页条数
+      schema:
+        type: integer
+        default: 10
+    orderByColumn:
+      name: orderByColumn
+      in: query
+      required: false
+      description: 排序字段（需过 `SqlUtil.escapeOrderBySql` 校验，非法值会被丢弃）
+      schema:
+        type: string
+    isAsc:
+      name: isAsc
+      in: query
+      required: false
+      description: 排序方向
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: asc
+
+  responses:
+    Unauthorized:
+      description: 未认证（token 缺失或过期）
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AjaxResult"
+          example:
+            code: 401
+            msg: "认证失败，无法访问系统资源"
+    Forbidden:
+      description: 无权限（`@PreAuthorize` 校验失败）
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AjaxResult"
+          example:
+            code: 403
+            msg: "没有权限，请联系管理员授权"
+    ServerError:
+      description: 服务端错误或业务校验失败
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AjaxResult"
+          example:
+            code: 500
+            msg: "操作失败"
+
+  schemas:
+
+    AjaxResult:
+      type: object
+      description: |
+        统一响应体（`com.ruoyi.common.core.domain.AjaxResult`），继承自 `HashMap`，
+        允许通过 `put(key, value)` 追加自定义字段。
+      properties:
+        code:
+          type: integer
+          description: 状态码
+          example: 200
+        msg:
+          type: string
+          description: 提示信息
+          example: "操作成功"
+        data:
+          description: 业务数据（仅 `AjaxResult.success(data)` 时存在）
+          nullable: true
+      required: [code, msg]
+
+    TableDataInfo:
+      type: object
+      description: 分页响应体（`com.ruoyi.common.core.page.TableDataInfo`）
+      properties:
+        total:
+          type: integer
+          format: int64
+          description: 总记录数
+          example: 42
+        rows:
+          type: array
+          description: 当前页数据
+          items: {}
+        code:
+          type: integer
+          description: 状态码
+          example: 200
+        msg:
+          type: string
+          description: 提示信息
+          example: "查询成功"
+      required: [total, rows, code, msg]
+
+    BaseEntity:
+      type: object
+      description: 实体公共字段（`com.ruoyi.common.core.domain.BaseEntity`）
+      properties:
+        createBy:
+          type: string
+          description: 创建者
+        createTime:
+          type: string
+          format: date-time
+          description: 创建时间（`yyyy-MM-dd HH:mm:ss`）
+        updateBy:
+          type: string
+          description: 更新者
+        updateTime:
+          type: string
+          format: date-time
+          description: 更新时间（`yyyy-MM-dd HH:mm:ss`）
+        remark:
+          type: string
+          description: 备注
+        params:
+          type: object
+          description: 请求参数透传（用于时间范围等动态查询条件）
+          additionalProperties: true
+
+    SysProduct:
+      description: |
+        产品管理对象（`com.ruoyi.biz.domain.SysProduct`），继承 `TreeEntity`（含 `BaseEntity` 字段）。
+        树形结构，通过 `parentId` 自关联。
+      allOf:
+        - $ref: "#/components/schemas/BaseEntity"
+        - type: object
+          properties:
+            productId:
+              type: integer
+              format: int64
+              description: 产品id（主键）
+              example: 1
+            parentId:
+              type: integer
+              format: int64
+              description: 父产品id，顶级为 0
+              example: 0
+            productName:
+              type: string
+              maxLength: 30
+              description: 产品名称
+              example: "模具管理系统"
+            orderNum:
+              type: integer
+              description: 显示顺序
+              example: 1
+            status:
+              type: string
+              description: 产品状态（0正常 1停用）
+              enum: ["0", "1"]
+              example: "0"
+          required: [productName]
+
+    SysStudent:
+      description: |
+        学生管理对象（`com.ruoyi.biz.domain.SysStudent`），继承 `BaseEntity`。平表，分页查询。
+      allOf:
+        - $ref: "#/components/schemas/BaseEntity"
+        - type: object
+          properties:
+            studentId:
+              type: integer
+              format: int64
+              description: 编号（主键）
+              example: 1
+            studentName:
+              type: string
+              maxLength: 30
+              description: 学生名称
+              example: "张三"
+            studentAge:
+              type: integer
+              description: 年龄
+              example: 20
+            studentHobby:
+              type: string
+              description: 爱好（0代码 1音乐 2电影）
+              enum: ["0", "1", "2"]
+              example: "0"
+            studentSex:
+              type: string
+              description: 性别（0男 1女 2未知）
+              enum: ["0", "1", "2"]
+              example: "0"
+            studentStatus:
+              type: string
+              description: 状态（0正常 1停用）
+              enum: ["0", "1"]
+              example: "0"
+            studentBirthday:
+              type: string
+              format: date
+              description: 生日（`yyyy-MM-dd`）
+              example: "2006-08-07"
+          required: [studentName]

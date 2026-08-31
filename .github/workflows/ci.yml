@@ -1,0 +1,92 @@
+name: CI
+
+# Harness Engineering, Pillar 2 (Architectural Constraints) — 把机器强制
+# 从"本地 mvn test"升级为"不可合入的闸门"。
+#
+# 两个闸门并行跑：
+#   Gate 1  docs-freshness   文档漂移（秒级，不需要 JVM）
+#   Gate 2  build-and-test   架构约束 + 全量测试（需要 Redis service）
+#
+# 注意：本仓库尚未纳入 git（无 .git / 无 remote），此文件在推送到
+# GitHub 并启用 Actions 之后才真正生效。若使用 GitLab / Gitee，
+# 需要改写为 .gitlab-ci.yml，两者的 job 内容完全一致。
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ------------------------------------------------------------------
+  # Gate 1 — 文档新鲜度
+  # 文档是 Agent 的唯一真相源，文档漂移 = Agent 照着错的干。
+  # 成本最低、收益最高，所以独立成 job 并且不依赖 JVM。
+  # ------------------------------------------------------------------
+  docs-freshness:
+    name: Gate 1 - knowledge freshness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check documentation drift
+        run: bash scripts/check-doc-links.sh --strict
+
+  # ------------------------------------------------------------------
+  # Gate 2 — 架构约束 + 全量测试
+  # ------------------------------------------------------------------
+  build-and-test:
+    name: Gate 2 - architecture and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Controller 鉴权测试（P1-5）走 Spring Security + JWT，需要 Redis。
+    # 当前用例（架构 15 + Service 18 + Mapper 23）是切片测试，并不需要，
+    # 但提前起 service 可以避免"等写了 Controller 测试 CI 才炸"。
+    services:
+      redis:
+        image: redis:6-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      # -am 是必需的：不加会把兄弟模块当外部依赖去仓库找，
+      #   报 Could not find artifact com.ruoyi:ruoyi-framework。
+      # -DfailIfNoTests=false 也是必需的：-am 把 ruoyi-common 等模块拉进
+      #   反应堆，而 -Dtest 对所有模块生效，无匹配用例的模块会直接失败
+      #   （surefire: No tests were executed!）。这两个坑都实测踩过。
+      - name: Gate 2a - architecture boundaries
+        run: >-
+          mvn -B test -pl ruoyi-admin -am
+          -Dtest=ArchitectureRulesTest,MapperXmlRulesTest
+          -DfailIfNoTests=false
+
+      - name: Gate 2b - full test suite
+        run: mvn -B clean test
+
+      - name: Upload surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: '**/target/surefire-reports/**'
+          if-no-files-found: ignore
