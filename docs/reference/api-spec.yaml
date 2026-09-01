@@ -22,7 +22,7 @@ servers:
   - url: http://localhost:8080
     description: 本地开发（后端直连）
   - url: /dev-api
-    description: 前端代理前缀（VUE_APP_BASE_API）
+    description: 代理前缀
   - url: /
     description: 生产（同域部署）
 
@@ -48,7 +48,7 @@ paths:
       operationId: listProduct
       description: |
         树形数据，**不分页**，一次性返回全部节点。
-        前端用 `handleTree(data, "productId", "parentId")` 组装成树。
+        客户端用 `handleTree(data, "productId", "parentId")` 组装成树。
 
         > ⚠️ 无分页存在性能隐患，见 docs/plans/current-sprint.md P1-1
       parameters:
@@ -107,7 +107,7 @@ paths:
       operationId: exportProduct
       description: |
         直接向 `HttpServletResponse` 写出 Excel 二进制流，不走 `AjaxResult` 包装。
-        前端需通过 `utils/request.js` 的 `download()` 调用（`responseType: blob`）。
+        调用方需通过 `utils/request.js` 的 `download()` 调用（`responseType: blob`）。
       parameters:
         - name: productName
           in: query
@@ -319,7 +319,7 @@ paths:
       tags: [student]
       summary: 导出学生管理列表
       operationId: exportStudent
-      description: 直接写出 Excel 二进制流，前端用 `download()` 调用。
+      description: 直接写出 Excel 二进制流，调用方用 `download()` 调用。
       parameters:
         - name: studentName
           in: query

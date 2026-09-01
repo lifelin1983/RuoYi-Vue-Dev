@@ -1,6 +1,6 @@
 # 错误码参考
 
-> 涵盖：HTTP/业务状态码、异常类体系、前端错误码映射、业务错误码规划。
+> 涵盖：HTTP/业务状态码、异常类体系、业务错误码规划。
 > 相关文档：[API 规范](./api-spec.yaml) ｜ [编码规范](../conventions/README.md)
 
 ---
@@ -15,25 +15,25 @@
 
 来源：`HttpStatus.java`
 
-| code | 常量名 | 含义 | 前端行为 |
-|------|--------|------|---------|
-| `200` | `SUCCESS` | 操作成功 | 直接返回 `res.data` |
-| `201` | `CREATED` | 对象创建成功 | 非 200，走 `Notification.error` |
-| `202` | `ACCEPTED` | 请求已接受（异步处理中） | 同上 |
-| `204` | `NO_CONTENT` | 执行成功但无返回数据 | 同上 |
-| `301` | `MOVED_PERM` | 资源已移除 | 同上 |
-| `303` | `SEE_OTHER` | 重定向 | 同上 |
-| `304` | `NOT_MODIFIED` | 资源未修改 | 同上 |
-| `400` | `BAD_REQUEST` | 参数错误（缺失 / 格式不匹配） | 同上 |
-| `401` | `UNAUTHORIZED` | 未认证，会话过期 | **弹窗提示重新登录**（全局只弹一次） |
-| `403` | `FORBIDDEN` | 无权限，授权过期 | `Notification.error` |
-| `404` | `NOT_FOUND` | 资源 / 服务未找到 | 同上 |
-| `405` | `BAD_METHOD` | HTTP 方法不允许 | 同上 |
-| `409` | `CONFLICT` | 资源冲突（如唯一约束冲突） | 同上 |
-| `415` | `UNSUPPORTED_TYPE` | 不支持的媒体类型 | 同上 |
-| `500` | `ERROR` | 系统内部错误 / 业务校验失败 | `Message.error(msg)` 并 reject |
-| `501` | `NOT_IMPLEMENTED` | 接口未实现 | `Notification.error` |
-| `601` | `WARN` | 系统警告（**业务警告专用**） | `Message.warning(msg)` 并 reject |
+| code | 常量名 | 含义 |
+|------|--------|------|
+| `200` | `SUCCESS` | 操作成功 |
+| `201` | `CREATED` | 对象创建成功 |
+| `202` | `ACCEPTED` | 请求已接受（异步处理中） |
+| `204` | `NO_CONTENT` | 执行成功但无返回数据 |
+| `301` | `MOVED_PERM` | 资源已移除 |
+| `303` | `SEE_OTHER` | 重定向 |
+| `304` | `NOT_MODIFIED` | 资源未修改 |
+| `400` | `BAD_REQUEST` | 参数错误（缺失 / 格式不匹配） |
+| `401` | `UNAUTHORIZED` | 未认证，会话过期 |
+| `403` | `FORBIDDEN` | 无权限，授权过期 |
+| `404` | `NOT_FOUND` | 资源 / 服务未找到 |
+| `405` | `BAD_METHOD` | HTTP 方法不允许 |
+| `409` | `CONFLICT` | 资源冲突（如唯一约束冲突） |
+| `415` | `UNSUPPORTED_TYPE` | 不支持的媒体类型 |
+| `500` | `ERROR` | 系统内部错误 / 业务校验失败 |
+| `501` | `NOT_IMPLEMENTED` | 接口未实现 |
+| `601` | `WARN` | 系统警告（**业务警告专用**） |
 
 ### 1.2 三个关键码
 
@@ -41,7 +41,7 @@
 |------|--------|------|
 | **200** | 所有成功的响应 | `AjaxResult.success()` 默认码 |
 | **500** | 业务校验失败、系统异常 | `AjaxResult.error()` 默认码；`ServiceException` 未指定 code 时用它 |
-| **601** | 业务**警告**（操作部分成功 / 需用户注意） | `AjaxResult.warn(msg)`；前端黄色提示 |
+| **601** | 业务**警告**（操作部分成功 / 需用户注意） | `AjaxResult.warn(msg)`；客户端黄色提示 |
 
 **使用建议**：
 
@@ -125,72 +125,17 @@ throw new BaseException("user.password.not.match");
 
 ---
 
-## 3. 前端错误码映射
-
-来源：`ruoyi-ui/src/utils/errorCode.js`
-
-**当前映射表（只有 4 条）**：
-
-```js
-export default {
-  '401': '认证失败，无法访问系统资源',
-  '403': '当前操作没有权限',
-  '404': '访问资源不存在',
-  'default': '系统未知错误，请反馈给管理员'
-}
-```
-
-### 3.1 响应拦截逻辑
-
-`ruoyi-ui/src/utils/request.js`：
-
-| 分支 | 行为 |
-|------|------|
-| `code === 200` | 返回 `res.data` |
-| `code === 401` | `MessageBox.confirm` 提示重新登录（`isRelogin.show` 全局去重），reject |
-| `code === 500` | `Message.error(msg)`，reject（**业务失败主要走这里**） |
-| `code === 601` | `Message.warning(msg)`，reject |
-| 其他非 200 | `Notification.error({title: msg})`，reject |
-| 网络层异常 | `Network Error` → "后端接口连接异常"；`timeout` → "系统接口请求超时" |
-
-### 3.2 取值优先级
-
-```js
-const msg = errorCode[code] || res.data.msg || errorCode['default']
-```
-
-即：**前端映射表 → 后端返回的 msg → default**。
-所以即便前端不配映射，后端的中文 `msg` 也能正常显示。
-
-### 3.3 待改进（P1-3）
-
-`601`（业务警告）当前未配置映射，实际会走 `res.data.msg`。建议补齐：
-
-```js
-export default {
-  '401': '认证失败，无法访问系统资源',
-  '403': '当前操作没有权限',
-  '404': '访问资源不存在',
-  '500': '操作失败',
-  '601': '操作警告',
-  'default': '系统未知错误，请反馈给管理员'
-}
-```
-
----
-
 ## 4. 业务错误码规划（P1-3 待落地）
 
 > ⚠️ **以下为规划，尚未实现。** 落地时需：
 > 1. 在 `ruoyi-common/src/main/java/com/ruoyi/common/constant/` 新增 `BizErrorCode.java`
 > 2. Service 层 `throw new ServiceException(msg, BizErrorCode.XXX)`
-> 3. 前端 `errorCode.js` 同步映射
 
 ### 4.1 规划原则
 
 - 业务错误码放在 **10000+** 段，避开 HTTP 状态码语义
 - 格式：`1` + `2位模块号` + `2位序号`
-- 前端必须能显示**可读中文**（靠后端 `msg` 兜底，映射表只做兜底补充）
+- 调用方必须能显示**可读中文**（靠后端 `msg` 兜底，映射表只做兜底补充）
 
 ### 4.2 规划表
 
@@ -257,10 +202,8 @@ throw new ServiceException("存在下级产品，不允许删除", BizErrorCode.
 | 接口返回 500 但 `msg` 是"操作失败" | Service 返回 0 行影响，被 `toAjax` 判为失败 | 检查 SQL 是否命中；业务校验应改抛 `ServiceException` |
 | 新增字段查出来是 null | `resultMap` / `selectXxxVo` 未同步 | `mapUnderscoreToCamelCase` 已关闭，需手工加映射 |
 | Mapper 报 `BindingException` | XML 文件名不以 `Mapper.xml` 结尾，或不在 `mapper/**` 下 | 检查 `mapperLocations` 配置 |
-| 前端提示"系统未知错误" | 后端抛了未捕获异常，且前端无对应映射 | 看后端日志；补齐 `errorCode.js` |
 | 文件上传失败 | 超过 `max-file-size: 10MB` / 扩展名白名单 | 检查 `application.yml` 与 `FileUploadException` |
-| Excel 导出乱码/空文件 | 前端未用 `download()`（未设 `responseType: blob`） | 改用 `utils/request.js` 的 `download()` |
-| 验证码接口报错 | `captchaType` 配置与前端不一致 | `application.yml` 的 `ruoyi.captchaType`（`math` / `char`） |
+| 验证码接口报错 | `captchaType` 配置与客户端不一致 | `application.yml` 的 `ruoyi.captchaType`（`math` / `char`） |
 
 ---
 
