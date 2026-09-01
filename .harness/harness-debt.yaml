@@ -9,8 +9,14 @@
 #   - 声明 open 且 verifiable:false（如前端测试不在本仓） → 仅告警，不自动改
 #
 # 演进路线（写在 schema 里，方便 nightly 逐步增强）：
-#   Level 0（当前）：结构化 + nightly 校验 verifiable 项 + 状态漂移自动回写
-#   Level 1：新增 check 类型（coverage_delta / new_untested_class）
+#   Level 0（已落地）：结构化 + nightly 校验 verifiable 项 + 状态漂移自动回写
+#   Level 1（已落地 2026-09-01）：新增监控型 check 类型
+#       - coverage_delta      校验指定包 LINE% 是否跌破声明红线（baseline）
+#       - new_untested_class  校验指定包下新增类是否都有对应测试类
+#       监控型 vs 验证型(test_exists)区别：
+#         验证型仅当 status∈{resolved,mitigated} 时校验证据，失效才记 drift；
+#         监控型持续有效，check FAIL 即记 drift，恢复 PASS 自动撤销 drift 回到 open；
+#         无 jacoco.csv（未构建）时 coverage_delta 降级 SKIP，不误报。
 #   Level 2（未来）：PR 触发时若降低覆盖率 / 新增未测类，自动追加 DEBT 草稿 + 评论
 #
 # 字段说明：
@@ -20,7 +26,10 @@
 #   priority    P0/P1/P2/P3
 #   status      open | mitigated | resolved | drift | wontfix
 #   verifiable  true=nightly 可自动校验；false=人工维护（如前端不在本仓）
-#   check       仅 verifiable:true 需要；type 见各 item
+#   check       仅 verifiable:true 需要；type 取值：
+#                 test_exists        (验证型) fields: test="Class.method"
+#                 coverage_delta     (监控型) fields: package, baseline, tolerance(可选,默认0)
+#                 new_untested_class (监控型) fields: package
 #   drift_note  nightly 回写时自动填充，记录漂移原因
 # ===========================================================================
 schema_version: 1
@@ -71,3 +80,30 @@ items:
       type: test_exists
       test: SysProductServiceImplTest.deleteSysProductByProductId_hasChildren_shouldThrowServiceException
     resolved_at: 2026-09-01
+
+  # ---- Level 1 监控型护栏（2026-09-01 落地，独立于 pom jacoco 门禁的熵管理兜底）----
+  - id: DEBT-005
+    kind: process
+    title: domain 包覆盖率退化护栏（跌破 66.00% 记欠账）
+    priority: P1
+    status: open
+    verifiable: true
+    check:
+      type: coverage_delta
+      package: com.ruoyi.biz.domain
+      baseline: 66.00
+      tolerance: 0
+    rationale: 独立于 pom jacoco 门禁的「覆盖率退化护栏」；nightly 跑时若 domain 整包 LINE% 跌破 66.00 即记 drift（比实测基线 66.67% 留 0.67pp 余量防浮点抖动/小退化；与 measured_baseline 同源口径）。门禁破红时主防线已拦，此护栏用于无推送期间的渐进退化捕捉。
+    created: 2026-09-01
+
+  - id: DEBT-006
+    kind: missing_test
+    title: service.impl 新增业务类必带测试（守住 100% 门禁前提）
+    priority: P1
+    status: open
+    verifiable: true
+    check:
+      type: new_untested_class
+      package: com.ruoyi.biz.service.impl
+    rationale: 监控型护栏；service.impl 门禁要求 100% 覆盖，新增类若无测试必拉低覆盖率。此检查在覆盖率数值变化前即发现「类-测试」配对缺失，比 jacoco 数值更早暴露。
+    created: 2026-09-01

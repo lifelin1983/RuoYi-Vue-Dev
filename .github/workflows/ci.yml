@@ -264,6 +264,7 @@ jobs:
     name: Nightly - audit harness debt ledger
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule'
+    needs: build-and-test        # 复用 Gate 2 已上传的 jacoco-reports（coverage_delta 需要）
     permissions:
       contents: write
     timeout-minutes: 10
@@ -271,6 +272,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Download JaCoCo reports artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: jacoco-reports
+          path: downloaded
 
       - name: Set up Python
         uses: actions/setup-python@v5

@@ -180,7 +180,7 @@ test_requirements:
     #   com.ruoyi.system.*     → RuoYi 核心，仍无量级单测，待补后再纳入 includes
   rule: |
     新增或修改 com.ruoyi.biz 下的类，必须同步提供测试类，否则不予合入。
-  debt_ledger: .harness/harness-debt.yaml   # 熵追踪台账（结构化，nightly-audit-debt 自动巡检）；原 resolved_defects / still_missing 已迁移至此，消除双源漂移
+  debt_ledger: .harness/harness-debt.yaml   # 熵追踪台账（结构化，nightly-audit-debt 自动巡检）；原 resolved_defects / still_missing 已迁移至此，消除双源漂移；Level 1 已支持监控型 check（coverage_delta / new_untested_class），FAIL 即记 drift、恢复自动撤销（详见 harness-debt.yaml 演进路线）
   note: |
     上游清单通常建议 80%+。本项目从 0 起步，已按
     docs/conventions/testing.md 的批次推进：架构测试 → Service → Mapper → common.utils。
