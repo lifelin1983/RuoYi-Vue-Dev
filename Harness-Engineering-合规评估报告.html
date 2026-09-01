@@ -52,7 +52,7 @@
 <div class="wrap">
 
   <h1>RuoYi-Vue · Harness Engineering 合规评估报告</h1>
-  <p class="sub">评估对象：<code>.claude/CLAUDE.md</code> 与 <code>docs/</code>（含 <code>.harness/enforcement.yml</code>）　|　评估基准：Harness Engineering（驾驭工程）范式　|　评估日期：2026-08-31</p>
+  <p class="sub">评估对象：<code>.claude/CLAUDE.md</code> 与 <code>docs/</code>（含 <code>.harness/enforcement.yml</code>）　|　评估基准：Harness Engineering（驾驭工程）范式　|　评估日期：2026-08-31（持续更新至 2026-09-01）</p>
 
   <div style="background:#e7f7ee;border:1px solid #9fd8b8;border-radius:10px;padding:14px 18px;margin:0 0 16px">
     <div style="font-size:14px;font-weight:600;color:#1a7a45;margin-bottom:6px">更新 2026-09-01 · P0-2 / P0-1 / P1 全部落地（含单条删除防护 · 依赖方向门禁 · pre-commit · Controller 测试）</div>
@@ -63,6 +63,16 @@
       <b>④ 2026-09-01 P1 收尾</b>：<b>单条删除同口径防护</b>（<code>deleteSysProductByProductId</code> 也先按 parentId 查子节点，消除 P1-2 同源缺陷）；<b>依赖方向机器强制</b>（<code>ArchitectureRulesTest</code> 新增 4 条 <code>noClasses</code> 规则，CI Gate 2a 自动执行，<code>dependency-direction</code> 由 pending 转 active）；<b>pre-commit 钩子</b>（<code>scripts/git-hooks/pre-commit</code> 提交前跑文档新鲜度校验，<code>scripts/setup-hooks.sh</code> 一次性启用）；<b>Controller 接口测试 P1-5</b>（新增 <code>SysProductControllerTest</code>，standalone MockMvc 6 用例，不启 Spring/Redis）。测试总数 56 → <b>68</b>。<br>
       <span style="color:#1a7a45">✅ 已通电验证</span>：仓库已推送 GitHub（<code>github.com/lifelin1983/RuoYi-Vue-Dev</code>，私有，<code>main</code> 分支）；Actions run <code>#33380657399</code> 三道闸门全绿。本次 JaCoCo 门禁额外做了<b>反向测试</b>：临时塞一个无覆盖的 <code>com.ruoyi.biz.service.impl</code> 类，<code>mvn clean verify</code> 立即 <b>BUILD FAILURE</b>（jacoco:check 报 rule violated），删除后恢复 SUCCESS——证明门禁真实生效、非假绿。<br>
       连带修正：<code>.harness/enforcement.yml</code> 的 <code>coverage-gate</code> 翻为 <code>status: active / wired_into_ci: true</code>，<code>coverage_targets</code> 改为实测基线。
+    </div>
+  </div>
+
+  <div style="background:#e7f7ee;border:1px solid #9fd8b8;border-radius:10px;padding:14px 18px;margin:0 0 16px">
+    <div style="font-size:14px;font-weight:600;color:#1a7a45;margin-bottom:6px">更新 2026-09-01（下午）· ① 后端覆盖率扩面：common.utils 子集单测 + 门禁（154 tests 全绿）</div>
+    <div style="font-size:13px;color:#2c6b47;line-height:1.7">
+      <b>common.utils 零守护 → 补齐</b>：新增 <code>ruoyi-common/src/test</code> 下 11 个纯静态工具单测类（<b>86 用例</b>，JUnit5+AssertJ，无 Spring 上下文），覆盖 Arith / StringUtils / DateUtils / SqlUtil / uuid×3 / sign×2 / html×2，<b>重点覆盖安全方法</b>：<code>SqlUtil.escapeOrderBySql</code>/<code>filterKeyword</code> 防 SQL 注入、<code>EscapeUtil</code>/<code>HTMLFilter</code> 的 XSS 清洗、<code>Base64</code>/<code>Md5Utils</code> 编解码往返。<br>
+      <b>门禁扩面</b>：<code>pom.xml</code> 的 JaCoCo <code>check</code> 新增 BUNDLE 规则 <code>com.ruoyi.common.utils.*</code> ≥ <b>0.85</b>（棘轮下限，实测基线 <b>85.1%</b>）。各类实测：Arith 100% / Base64 94.9% / SqlUtil 94.1% / DateUtils 91.4% / StringUtils 89.7% / EscapeUtil 85.7% / UUID 83.3% / HTMLFilter 78.6% / IdUtils 75.0% / Seq 72.7% / Md5Utils 63.6%。<br>
+      <b>enforcement.yml 同步</b>：测试总数 68 → <b>154</b>（ruoyi-common +86）；<code>coverage_targets</code> 加 <code>common.utils (bundle): 85</code>；<code>measured_baseline</code> 补 85.1%；<code>still_missing</code> 维持仅前端测试。<br>
+      <span style="color:#1a7a45">✅ 已通电验证</span>：本地 <code>mvn -B clean verify</code> → BUILD SUCCESS（7 模块全过，新门禁 "All coverage checks have been met"）；文档新鲜度 38 项 PASS；已推送 GitHub（<code>693af1d..f85072b</code>），Actions run <code>#33455747839</code> 三道闸门全绿（仅 Node.js20 / setup-java v4 弃用告警，非阻断）。
     </div>
   </div>
 
@@ -77,23 +87,24 @@
   </div>
 
   <div class="verdict">
-    <div class="big">B+</div>
+    <div class="big">A-</div>
     <div>
-      <div style="font-size:15px;font-weight:600">总体结论：文档体系是 Harness Engineering 的<b>高质量落地样本</b>，前两支柱扎实，短板在"外环自动化"</div>
-      <div class="note">上下文工程与架构约束两支柱完成度很高（规则有事故溯源、约束可机器执行、错误可自愈）。质量门禁层已从"缺口"转为"符合"（CI 三道闸门全绿 + JaCoCo 覆盖率门禁经反向测试确认真实生效）。剩余增强项：pre-commit Hook（提交前毫秒级拦截）、<code>dependency-direction</code> 约束扫描、熵管理周期性巡检——均非阻塞，属 Harness 从"生产级"迈向"全自动"的最后一公里。</div>
+      <div style="font-size:15px;font-weight:600">总体结论：文档体系是 Harness Engineering 的<b>生产级落地样本</b>，三支柱齐全、闭环完整，唯一系统性短板（外环自动化）已基本补齐</div>
+      <div class="note">上下文工程与架构约束两支柱完成度很高（规则有事故溯源、约束可机器执行、错误可自愈）。质量门禁层已全绿：CI 三道闸门（文档新鲜度 / 架构边界 / 全量测试+覆盖率）全过，JaCoCo 门禁覆盖 <code>com.ruoyi.biz</code> + <code>com.ruoyi.common.utils</code>（154 测试，经反向测试确认真实生效），pre-commit 钩子已落地把拦截前移到提交前。剩余增强项仅：前端测试（P2-4）、熵管理周期性巡检（P2）——均非阻塞，属 Harness 从"生产级"迈向"全自动"的最后一公里。</div>
     </div>
   </div>
 
   <!-- 图表 -->
   <div class="card">
     <h3 style="margin-top:0">各支柱合规评分（0–100，基于实地核验）</h3>
-    <div class="bar-row"><div class="bar-name">① 上下文工程</div><div class="bar-track"><div class="bar-fill" style="width:88%;background:var(--green)">88</div></div></div>
-    <div class="bar-row"><div class="bar-name">② 架构约束</div><div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--green)">90</div></div></div>
-    <div class="bar-row"><div class="bar-name">核心心法/棘轮</div><div class="bar-track"><div class="bar-fill" style="width:92%;background:var(--green)">92</div></div></div>
-    <div class="bar-row"><div class="bar-name">③ 熵管理 <span style="color:var(--amber)">↑</span></div><div class="bar-track"><div class="bar-fill" style="width:68%;background:var(--amber)">68</div></div></div>
-    <div class="bar-row"><div class="bar-name">质量门禁(CI/Hook)</div><div class="bar-track"><div class="bar-fill" style="width:88%;background:var(--green)">88</div></div></div>
-    <p class="note" style="margin-top:10px">说明：②架构约束 82→<b>90</b>（2026-08-31）：CI 配置已写入且三条命令实测通过，机器强制从"仅本地"升级为"可合入门禁"（推送 GitHub 后已激活）。<br>
-    质量门禁 28→<b>88</b>：CI 三门闸门（文档新鲜度 / 架构约束+全量测试 / JaCoCo 覆盖率）已通电并反向验证；<b>依赖方向门禁</b>已编码为 ArchUnit 规则随 Gate 2a 自动执行；<b>pre-commit 钩子</b>已落地（提交前跑文档新鲜度校验，把拦截前移到本地）。仅剩前端测试与周期性巡检两项增强，故未给满分。<br>
+    <div class="bar-row"><div class="bar-name">① 上下文工程</div><div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--green)">90</div></div></div>
+    <div class="bar-row"><div class="bar-name">② 架构约束</div><div class="bar-track"><div class="bar-fill" style="width:92%;background:var(--green)">92</div></div></div>
+    <div class="bar-row"><div class="bar-name">核心心法/棘轮</div><div class="bar-track"><div class="bar-fill" style="width:94%;background:var(--green)">94</div></div></div>
+    <div class="bar-row"><div class="bar-name">③ 熵管理 <span style="color:var(--amber)">↑</span></div><div class="bar-track"><div class="bar-fill" style="width:74%;background:var(--amber)">74</div></div></div>
+    <div class="bar-row"><div class="bar-name">质量门禁(CI/Hook)</div><div class="bar-track"><div class="bar-fill" style="width:92%;background:var(--green)">92</div></div></div>
+    <p class="note" style="margin-top:10px">说明：②架构约束 82→<b>90</b>→<b>92</b>（2026-09-01）：CI 配置已写入且三条命令实测通过；<code>dependency-direction</code> 已编码为 4 条 ArchUnit <code>noClasses</code> 规则随 Gate 2a 自动执行，机器强制覆盖"模块依赖方向"。<br>
+    质量门禁 28→<b>88</b>→<b>92</b>：CI 三道闸门（文档新鲜度 / 架构边界 / 全量测试+JaCoCo 覆盖率）已通电并反向验证；覆盖率门禁扩面至 <code>com.ruoyi.common.utils</code>（86 用例，BUNDLE ≥0.85，实测 85.1%）；<b>pre-commit 钩子</b>已落地（提交前跑文档新鲜度校验，把拦截前移到本地）。仅剩前端测试与周期性巡检两项增强，故未给满分。<br>
+    ③熵管理 68→<b>74</b>（2026-09-01）：文档新鲜度校验已自动化（<code>--strict</code>，38 项 PASS）且每次 push 在 CI 跑；<code>dependency-direction</code> 约束扫描已随 Gate 2a 持续执行。仅"周期性巡检（scheduled agent）"仍未落地，故未给满分。</p>
     ③熵管理由 35 上调至 <b>68</b>（2026-08-31）：文档新鲜度校验已自动化并接入 <code>--strict</code>；<code>dependency-direction</code> 约束扫描已于 2026-09-01 落地为 ArchUnit 规则；仅周期性巡检仍未落地，故未给满分。</p>
   </div>
 
@@ -114,9 +125,9 @@
       <tr><td>规则有事故溯源（非臆测）</td><td><span class="badge b-ok">符合</span></td>
         <td>"五条铁律"逐条对应真实故障：如"实体加字段必须改三处"源自 <code>mapUnderscoreToCamelCase</code> 关闭导致查 null</td>
         <td>—</td></tr>
-      <tr><td>交叉引用可解析（knowledge-freshness）</td><td><span class="badge b-part">部分</span></td>
-        <td>人工核验 CLAUDE.md 与 docs 互链全部指向真实文件</td>
-        <td><code>enforcement.yml</code> 已将其列为 P0 待办但未实现；应加 CI 校验链接有效性</td></tr>
+      <tr><td>交叉引用可解析（knowledge-freshness）</td><td><span class="badge b-ok">符合</span></td>
+        <td><code>scripts/check-doc-links.sh</code>（6 类检查，<code>--strict</code>）已实现并接入 CI Gate 1；当前 <b>38 项通过 / 0 error / 0 warning</b></td>
+        <td>—（2026-08-31 已落地并反向测试验证）</td></tr>
 
       <!-- 架构约束 -->
       <tr><td colspan="4" class="pillar">② 架构约束（Architectural Constraints）</td></tr>
@@ -136,20 +147,23 @@
         <td>曾注入无 <code>@PreAuthorize</code> 的 Controller，规则成功拦截并精确定位（验证后清理）</td>
         <td>—</td></tr>
       <tr><td>质量门禁接入 CI</td><td><span class="badge b-ok">符合</span></td>
-        <td><code>.github/workflows/ci.yml</code> 已存在：Gate 1 文档新鲜度 + Gate 2 架构约束/全量测试 + <b>JaCoCo 覆盖率门禁</b>；Actions run #33380657399 实测 success</td>
-        <td>已落地：<code>scripts/git-hooks/pre-commit</code> + <code>scripts/setup-hooks.sh</code>，提交前跑文档新鲜度校验（属增强已补）</td></tr>
-      <tr><td>Pre-commit Hook 拦截</td><td><span class="badge b-gap">缺口</span></td>
-        <td>仓库无 Hook 配置</td>
-        <td>加 PreToolUse / pre-commit 钩子跑架构测试，毫秒级拦截</td></tr>
+        <td><code>.github/workflows/ci.yml</code>：Gate 1 文档新鲜度 + Gate 2a 架构边界 + Gate 2b 全量测试 + <b>JaCoCo 覆盖率门禁</b>；Actions run #33380657399 / #33453875910 / #33455747839 连续三次实测 success</td>
+        <td>覆盖率门禁已扩至 <code>com.ruoyi.biz</code> + <code>com.ruoyi.common.utils</code>（<b>154 测试</b>），棘轮只升不降</td></tr>
+      <tr><td>覆盖率门禁覆盖核心工具</td><td><span class="badge b-ok">符合</span></td>
+        <td>JaCoCo <code>check</code> 新增 BUNDLE 规则 <code>com.ruoyi.common.utils.*</code> ≥ <b>0.85</b>（实测 85.1%）；11 个纯静态工具类（含 escapeOrderBySql/filterKeyword/EscapeUtil/HTMLFilter 等安全方法）已有单测守护</td>
+        <td>—（2026-09-01 已落地，CI run #33455747839 验证）</td></tr>
+      <tr><td>Pre-commit Hook 拦截</td><td><span class="badge b-ok">符合</span></td>
+        <td><code>scripts/git-hooks/pre-commit</code> 已落地，<code>scripts/setup-hooks.sh</code> 一次性启用；提交前跑 <code>check-doc-links.sh --strict</code>，文档漂移即阻止提交</td>
+        <td>架构/覆盖率门禁仍在 CI 强制（保持提交秒级、离线可用、不依赖 Maven/网络）</td></tr>
 
       <!-- 熵管理 -->
       <tr><td colspan="4" class="pillar">③ 熵管理（Entropy Management / 垃圾回收）</td></tr>
-      <tr><td>文档↔代码一致性巡检</td><td><span class="badge b-gap">缺口</span></td>
-        <td>无定期巡检；<code>knowledge-freshness</code> 仅计划未落地</td>
-        <td>落地 scheduled agent 校验 docs 与代码是否漂移</td></tr>
-      <tr><td>约束违规扫描器</td><td><span class="badge b-gap">缺口</span></td>
-        <td>无绕过早期检查的检测机制</td>
-        <td>周期性跑 ArchUnit + 依赖树审计</td></tr>
+      <tr><td>文档↔代码一致性巡检</td><td><span class="badge b-ok">符合</span></td>
+        <td><code>knowledge-freshness</code> 已落地（<code>--strict</code>，38 项 PASS），每次 push 在 CI Gate 1 自动跑，链接失效/矛盾表述会被挡下合入</td>
+        <td>缺"周期性（scheduled）巡检"——当前只在 push 触发，未合入前的长周期漂移无主动发现；属 P2 增强</td></tr>
+      <tr><td>约束违规扫描器</td><td><span class="badge b-part">部分</span></td>
+        <td><code>dependency-direction</code> 已编码为 4 条 ArchUnit <code>noClasses</code> 规则，随 Gate 2a 每次 push 持续执行；架构边界/权限注解违规必被拦截</td>
+        <td>非 scheduled 周期跑（同文档一致性巡检），依赖 push 触发；可加 nightly 全量扫描兜底</td></tr>
       <tr><td>手动熵追踪（变更记录/欠账）</td><td><span class="badge b-part">部分</span></td>
         <td>CLAUDE.md "已知欠账"、current-sprint "待改进"、各文档"变更记录"——属人工熵管理</td>
         <td>好起点，但应演进为自动巡检以免文档随代码漂移</td></tr>
@@ -218,7 +232,8 @@
       <li>✅ P1-2 孤儿数据缺陷已闭环：<code>SysProductServiceImplTest</code> / <code>SysProductMapperTest</code> 两处验收用例由 <code>@Disabled</code> 转为通过（2026-09-01），印证棘轮实践。</li>
       <li>✅ <code>docs/reference/api-spec.yaml</code> 669 行，确为实质契约而非占位。</li>
       <li>✅ <code>.github/workflows/ci.yml</code> 已存在并通电（Gate 1 文档新鲜度 / Gate 2 架构约束+全量测试+<b>JaCoCo 覆盖率门禁</b>），架构约束已从"仅本地强制"升级为"不可合入的 CI 门禁"。</li>
-      <li>✅ CLAUDE.md 与 docs 全部互链指向真实文件（knowledge-freshness 人工通过，但自动化缺失）。</li>
+      <li>✅ CLAUDE.md 与 docs 全部互链指向真实文件；<code>knowledge-freshness</code> 已自动化（<code>scripts/check-doc-links.sh --strict</code>，当前 38 项 PASS），并接入 CI Gate 1。</li>
+      <li>✅ <code>com.ruoyi.common.utils</code> 零守护已补齐：<code>ruoyi-common/src/test</code> 下 11 个纯静态工具单测类真实存在（86 用例），且 JaCoCo <code>check</code> 已加 BUNDLE 规则 <code>com.ruoyi.common.utils.*</code> ≥ 0.85；本地 <code>mvn -B clean verify</code> 与 CI run #33455747839 均 BUILD SUCCESS（"All coverage checks have been met"）。</li>
     </ul>
   </div>
 
@@ -230,8 +245,9 @@
     <tbody>
       <tr><td><span class="badge b-gap">P0</span></td><td>接入 CI：PR 闸门跑 <code>mvn test</code>（架构+业务），并起 Redis service 供鉴权测试</td><td>质量门禁 / Pillar 2 闭环</td><td>把"本地强制"变为"不可合入的强制"，是范式成立的关键一跃</td></tr>
       <tr><td><span class="badge b-ok">P0 ✅</span></td><td>加 <code>knowledge-freshness</code> 校验：CLAUDE.md 与 docs 互链、enforcement.yml 引用文件均存在</td><td>熵管理 / 文档漂移</td><td><b>2026-08-31 已完成</b>：<code>scripts/check-doc-links.sh</code>，实测抓出 4 处过期表述并已修正，<code>--strict</code> 全绿</td></tr>
-      <tr><td><span class="badge b-ok">P1</span></td><td>加 Pre-commit Hook 跑文档新鲜度校验，毫秒级拦截</td><td>质量门禁前置</td><td>提交前即拦截文档漂移，缩短反馈回路（"修正廉价，等待昂贵"）；架构/覆盖率仍在 CI 强制</td></tr>
-      <tr><td><span class="badge b-ok">P1</span></td><td>接入 JaCoCo 覆盖率门禁（实测基线：biz.service.impl <b>100%</b> / biz.domain <b>~50%</b> / biz 整包 <b>~70%</b>，棘轮只升不降）</td><td>Verify 层</td><td>已落地并通过反向测试（塞未覆盖类→BUILD FAILURE）；RuoYi 核心与 common.utils 待补单测后扩大范围</td></tr>
+      <tr><td><span class="badge b-ok">P1 ✅</span></td><td>加 Pre-commit Hook 跑文档新鲜度校验，毫秒级拦截</td><td>质量门禁前置</td><td><b>2026-09-01 已完成</b>：<code>scripts/git-hooks/pre-commit</code> + <code>scripts/setup-hooks.sh</code>，提交前即拦截文档漂移；架构/覆盖率仍在 CI 强制</td></tr>
+      <tr><td><span class="badge b-ok">P1 ✅</span></td><td>① 后端覆盖率扩面：<code>com.ruoyi.common.utils</code> 子集单测 + 门禁</td><td>Verify 层覆盖面</td><td><b>2026-09-01 已完成</b>：新增 11 个纯静态工具单测类（86 用例），JaCoCo <code>check</code> 加 BUNDLE 规则 <code>com.ruoyi.common.utils.*</code> ≥ 0.85（实测 85.1%）；测试总数 68 → 154</td></tr>
+      <tr><td><span class="badge b-ok">P1</span></td><td>接入 JaCoCo 覆盖率门禁（实测基线：biz.service.impl <b>100%</b> / biz.domain <b>~50%</b> / biz 整包 <b>~70%</b> / common.utils <b>85.1%</b>，棘轮只升不降）</td><td>Verify 层</td><td>已落地并通过反向测试（塞未覆盖类→BUILD FAILURE）；RuoYi 核心（<code>com.ruoyi.system.*</code>）仍无单测，待补后再扩大范围</td></tr>
       <tr><td><span class="badge b-ok">P1</span></td><td>Controller 接口测试（P1-5）已落地：<code>SysProductControllerTest</code> 6 用例</td><td>Pillar 2 覆盖面</td><td>鉴权由 ArchUnit 兜底，行为正确性已有测试</td></tr>
       <tr><td><span class="badge b-part">P2</span></td><td>落地前端 Jest 测试（P2-4）</td><td>Pillar 2 覆盖面</td><td>补上前端纯函数验证，性价比最低、投入最大，放最后</td></tr>
       <tr><td><span class="badge b-part">P2</span></td><td>定期约束违规扫描 + 文档一致性 agent（熵管理）</td><td>Pillar 3</td><td>对抗 AI 生成代码的熵增，保持仓库对人和未来 Agent 都健康</td></tr>
@@ -241,7 +257,7 @@
 
   <p class="foot">
     评估方法：联网锚定 Harness Engineering 权威原则（OpenAI / Anthropic / 中国工业互联网研究院 / GMO 等公开论述），逐条对照仓库内 <code>.claude/CLAUDE.md</code>、<code>docs/</code> 与 <code>.harness/enforcement.yml</code>，并对关键产物做文件系统实地核验。<br>
-    结论：该仓库文档体系已显著高于"提示词工程"水平——规则有溯源、约束可机器执行、缺陷被固化为验收用例，符合 Harness Engineering 内核；唯一系统性短板是"外环自动化"（CI 门禁、Hook、熵管理巡检），补齐后即达生产级 Harness。
+    结论：该仓库文档体系已显著超越"提示词工程"水平——规则有溯源、约束可机器执行、缺陷被固化为验收用例，符合 Harness Engineering 内核；CI 三道闸门（文档新鲜度 / 架构边界 / 全量测试+覆盖率）、pre-commit 钩子、依赖方向门禁、JaCoCo 覆盖率门禁（覆盖 biz + common.utils，154 测试）均已通电并反向验证确认真实生效，达<b>生产级 Harness</b>。剩余两项非阻塞增强：前端测试（P2-4）、熵管理周期性巡检（P2，当前仅在 push 触发而非 scheduled）——补齐后即迈向"全自动 Harness"。
   </p>
 
 </div>
