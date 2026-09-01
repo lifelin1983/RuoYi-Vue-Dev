@@ -319,15 +319,23 @@ ci_jobs:
 
   - name: branch-protection
     priority: P1
-    status: active           # 2026-09-01 仓库改 PUBLIC 后 classic 保护 API 放行，已设（防 force-push/误删，不阻断直推）
+    status: active           # 2026-09-01 仓库改 PUBLIC 后 classic 保护 API 放行；已设防 force-push/误删 + required_status_checks(Gate1+Gate2)
     wired_into_ci: true
     description: |
       对 main 分支设置分支保护：allow_force_pushes=false + allow_deletions=false（防历史被篡改/误删），
-      enforce_admins=false、不设 required_status_checks / required_pull_request_reviews —— 保留用户直推 main 工作流。
-      注：GitHub required_status_checks 会阻断直推（新提交无 CI 结果即被拒），故未启用；CI 门禁仍由 JaCoCo check
-      （构建失败）在 PR 路径强制、直推由 CI 事后报告守护。
+      enforce_admins=false，且已启用 required_status_checks（strict=false，
+      contexts=["Gate 2 - architecture and tests","Gate 1 - knowledge freshness"]）—— PR 合入须两 Gate 通过。
+      纠正旧认知：required_status_checks 不会阻断直推 main（普通 push 不受其约束，仅 PR 合入受影响），
+      用户仍可直推 origin main，CI 亦因 push 触发运行；直推路径不经"必须通过"约束，故 CI 门禁目前只覆盖 PR 路径。
+      若要彻底禁止直推、强制走 PR，需改用 restrictions 限制可 push 人员（会推翻当前直推习惯，待用户决定）。
       解锁前提：原私有免费仓库 classic 保护 API 返回 403（需 Pro/public），已于 2026-09-01 将仓库设为 PUBLIC 后启用。
     command: |
       gh api -X PUT repos/lifelin1983/RuoYi-Vue-Dev/branches/main/protection \
-        --input prot.json   # allow_force_pushes:false, allow_deletions:false, enforce_admins:false
-                            # 注：当前账户计划下该 API 返回 403，需先升级 Pro / 公开仓库
+        --input prot.json   # 当前生效 payload 见下
+      # 实际生效配置（2026-09-01 启用 required_status_checks）：
+      # {
+      #   "required_status_checks": {"strict": false,
+      #     "contexts": ["Gate 2 - architecture and tests", "Gate 1 - knowledge freshness"]},
+      #   "enforce_admins": false, "required_pull_request_reviews": null,
+      #   "restrictions": null, "allow_force_pushes": false, "allow_deletions": false
+      # }
