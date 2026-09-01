@@ -1,8 +1,8 @@
 # RuoYi-Vue — Agent 指南
 
 RuoYi-Vue `3.9.2` 后台管理系统。后端 Spring Boot 多模块 + MyBatis + Spring Security(JWT)，
-自有业务包 `com.ruoyi.biz`（产品管理、学生管理）。
-后端 `:8080`。MySQL(Druid) + Redis。
+前端 Vue2 SPA。自有业务包 `com.ruoyi.biz`（产品管理、学生管理）。
+后端 `:8080`，前端 dev `:80`（代理转发）。MySQL(Druid) + Redis。
 
 ## 快速导航
 
@@ -25,7 +25,7 @@ RuoYi-Vue `3.9.2` 后台管理系统。后端 Spring Boot 多模块 + MyBatis + 
 2. **Mapper XML 必须以 `Mapper.xml` 结尾**且在 `resources/mapper/**` 下。
    否则 `mapperLocations` 扫不到，运行时报 `BindingException`。
 3. **Controller 每个方法必须带 `@PreAuthorize("@ss.hasPermi('...')")`**。
-   漏了就是真实越权漏洞。
+   漏了就是真实越权漏洞——前端隐藏按钮不算防护。
 4. **`ruoyi-common` 不得依赖任何 ruoyi 模块、不得写业务逻辑**。
    它只放无状态工具、常量、注解、异常、基类。
 5. **业务代码按层跨模块落地**（见下表）。Controller 放进 `ruoyi-system` 会破坏依赖方向。
@@ -40,6 +40,8 @@ RuoYi-Vue `3.9.2` 后台管理系统。后端 Spring Boot 多模块 + MyBatis + 
 | mapper XML | `ruoyi-system` | `resources/mapper/biz/` |
 | service 接口 | `ruoyi-system` | `com/ruoyi/biz/service/` |
 | service 实现 | `ruoyi-system` | `com/ruoyi/biz/service/impl/` |
+| 前端 API | `ruoyi-ui` | `src/api/biz/` |
+| 前端页面 | `ruoyi-ui` | `src/views/biz/` |
 
 命名约定：实体 `Xxx`、Service 接口 `IXxxService`、实现 `XxxServiceImpl`。
 标准写法照抄 `SysProductController` / `SysStudentController`。
@@ -47,7 +49,9 @@ RuoYi-Vue `3.9.2` 后台管理系统。后端 Spring Boot 多模块 + MyBatis + 
 ## 技术栈
 
 Java 8 · Spring Boot `2.5.15` · MyBatis · Druid · Redis · JJWT · Spring Security `5.7.14`
+Vue `2.6.12` · Element UI `2.15.14` · vue-cli 4 · MySQL
 
+> 前端是 **Vue2 Options API**，禁止 `<script setup>` 与 Vue3 语法。
 > 后端**未引入 Lombok**，getter/setter 全部手写。
 
 ## 验证命令
@@ -61,6 +65,7 @@ mvn test -pl ruoyi-admin -am -Dtest=ArchitectureRulesTest,MapperXmlRulesTest -Df
 mvn test -pl ruoyi-admin -am -Dtest=SysProductControllerTest -DfailIfNoTests=false   # Controller 接口测试 (P1-5)
 mvn test -pl ruoyi-system -am -Dtest='Sys*Test' -DfailIfNoTests=false
 mvn clean package -DskipTests -pl ruoyi-admin -am    # 后端打包
+cd ruoyi-ui && npm run dev                           # 前端 :80
 # 一次性启用本机 pre-commit 钩子（提交即拦文档漂移）：bash scripts/setup-hooks.sh
 ```
 
@@ -89,20 +94,21 @@ CI 把各模块 `jacoco.csv` 聚合为门禁守护范围的真实覆盖率（当
 
 ## 可用命令
 
-- `ry.bat` / `ry.sh` — 一键打包（后端）
+- `ry.bat` / `ry.sh` — 一键打包
+- `mvn`、`npm` 常规命令
 
 ## 禁止操作
 
-- 不改 `common/**` 等框架自带目录
+- 不改 `views/system/**`、`api/system/**`、`common/**` 等框架自带目录
 - 不在 Java 代码里拼 SQL；排序字段必须过 `SqlUtil.escapeOrderBySql()`
 - 不直连生产库执行写操作
 - 不提交密钥：`token.secret` 与 Redis 密码当前是默认值，部署前必须替换
-- 不引入 Lombok（与全仓库风格冲突）
+- 不引入 Lombok、不升级 Vue3（与全仓库风格冲突）
 
 ## 已知欠账
 
 - `sys_product` / `sys_student` 建表 SQL 未纳入 `sql/`，新环境初始化会失败
-- RuoYi 核心 `com.ruoyi.system.*` 仍无量级单测，未纳入覆盖率门禁
+- 前端测试尚未覆盖（P2-4）；RuoYi 核心 `com.ruoyi.system.*` 仍无量级单测，未纳入覆盖率门禁
 - 已完成：树形删除子节点校验（P1-2）、单条删除同口径防护、依赖方向门禁、`dependency-direction`
   扫描、pre-commit Hook、Controller 接口测试（P1-5）、`common.utils` 子集单测 + 覆盖率门禁（154 测试全绿）
 

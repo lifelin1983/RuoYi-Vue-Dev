@@ -18,7 +18,8 @@
 | `sys_product` / `sys_student` 建表 SQL 未入库 | 新环境无法初始化 | 🔴 高 |
 | 产品列表无分页 | 数据膨胀后接口劣化 | 🟡 中 |
 | 树形删除未校验子节点 | 产生孤儿数据 | 🟡 中 |
-| 无错误处理规范 | 客户端只显示"系统未知错误" | 🟡 中 |
+| 前端 `rules` 校验为空 | 脏数据可直入 | 🟡 中 |
+| 无错误处理规范 | 前端只显示"系统未知错误" | 🟡 中 |
 | token 密钥 / Redis 密码为默认值 | 生产安全隐患 | 🟡 中 |
 
 **本迭代目标**：把 `biz` 模块从"能跑"推进到"可交付、可维护"，并补齐工程化底座。
@@ -43,6 +44,7 @@
 | P0-7 | **架构约束结构化测试** | `ArchitectureRulesTest` + `MapperXmlRulesTest` + `.harness/enforcement.yml` | P0-3 | ✅ 已完成（15 用例全绿） |
 | P0-4 | **补 Service 单测** | `SysProductServiceImplTest`(10)、`SysStudentServiceImplTest`(8) | P0-3 | ✅ 已完成 |
 | P0-5 | **补 Mapper 测试** | `SysProductMapperTest`(11)、`SysStudentMapperTest`(12)，H2 覆盖全部 SQL | P0-3 | ✅ 已完成 |
+| P0-6 | **前端必填校验** | 两个 `index.vue` 的 `rules` 补全 | — | ⬜ 待开始 |
 
 ### P1 — 应当完成
 
@@ -50,7 +52,7 @@
 |---|------|--------|------|------|
 | P1-1 | **产品列表加分页/懒加载** | `SysProductController.list()` 改造 | — | ⬜ 待开始 |
 | P1-2 | **树形删除校验子节点** | `SysProductServiceImpl` 删除前检查 `parent_id` | — | ⬜ 待开始 |
-| P1-3 | **统一错误码** | 后端新增业务错误码常量（统一返回可读 msg） | — | ⬜ 待开始 |
+| P1-3 | **统一错误码** | 后端新增业务错误码常量 + 前端 `errorCode.js` 映射 | — | ⬜ 待开始 |
 | P1-4 | **业务异常规范化** | Service 校验改用 `throw new ServiceException(...)` | P1-3 | ⬜ 待开始 |
 | P1-5 | **补 Controller 接口测试** | `/biz/**` 主流程 + 鉴权用例 | P0-3 | ⬜ 待开始 |
 | P1-6 | **编写 API 文档** | `docs/reference/api-spec.yaml` | — | ✅ 已完成 |
@@ -62,6 +64,7 @@
 | P2-1 | 生产配置加固 | token 密钥、Redis 密码外置到环境变量；`swagger.enabled=false` | ⬜ 待开始 |
 | P2-2 | 接入 CI | `.github/workflows/ci.yml` 跑 `mvn test` | ⬜ 待开始 |
 | P2-3 | 开启驼峰映射 | `mapUnderscoreToCamelCase=true`，逐步去掉冗余 `resultMap` | ⬜ 待开始 |
+| P2-4 | 前端引入 Jest | `tests/unit/utils/ruoyi.spec.js` | ⬜ 待开始 |
 | P2-5 | 操作日志接入业务模块 | 确认 `biz` 的 `@Log` 已正确落库 | ⬜ 待开始 |
 
 ---
@@ -145,7 +148,7 @@ VALUES
 ```
 
 > 权限串必须与 `SysProductController` 里的 `@PreAuthorize("@ss.hasPermi('biz:product:xxx')")`
-> 以及 `v-hasPermi="['biz:product:xxx']"` **完全一致**。
+> 以及前端 `v-hasPermi="['biz:product:xxx']"` **完全一致**。
 
 **验收标准**：
 
@@ -243,6 +246,27 @@ VALUES
 
 ---
 
+### P0-6 前端必填校验
+
+现状：两个 `index.vue` 的 `rules` 都是空对象 `{}`。
+
+**产品管理**应至少包含：
+
+```js
+rules: {
+  productName: [
+    { required: true, message: "产品名称不能为空", trigger: "blur" }
+  ],
+  orderNum: [
+    { required: true, message: "显示顺序不能为空", trigger: "blur" }
+  ]
+}
+```
+
+**学生管理**应至少包含：`studentName`（必填）、`studentAge`（数字范围 0-120）。
+
+---
+
 ### P1-1 产品列表分页
 
 **现状**：`SysProductController.list()` 直接 `return success(list)`，无分页。
@@ -251,7 +275,7 @@ VALUES
 
 | 方案 | 做法 | 优点 | 缺点 |
 |------|------|------|------|
-| **A. 树形懒加载（推荐）** | `list` 改为按 `parentId` 查一层（树形懒加载） | 数据量大时性能好 | 改造量中等 |
+| **A. 树形懒加载（推荐）** | `list` 改为按 `parentId` 查一层，前端 `el-table` 用 `lazy` + `load` | 数据量大时性能好 | 前端改造量中等 |
 | B. 加分页 | `startPage()` + `getDataTable()` | 改动最小 | 树形结构被分页截断，体验差 |
 
 **推荐 A**，与 `TreeEntity` 的树形语义匹配。若产品数量确定在百级以内，可暂用 B 过渡。
@@ -261,7 +285,7 @@ VALUES
 ### P1-2 树形删除校验子节点
 
 **现状**：`deleteSysProductByProductIds` 直接 `delete ... where product_id in (...)`，
-删除父节点后其子节点变成孤儿数据（树形视图中再也找不到）。
+删除父节点后其子节点变成孤儿数据（前端树里再也找不到）。
 
 **改法**：在 `SysProductServiceImpl.deleteSysProductByProductIds` 中先校验：
 
@@ -290,6 +314,7 @@ public int deleteSysProductByProductIds(Long[] productIds)
 
 1. 在 `ruoyi-common/src/main/java/com/ruoyi/common/constant/` 新增业务错误码常量
 2. Service 层校验统一 `throw new ServiceException(...)`
+3. 前端 `ruoyi-ui/src/utils/errorCode.js` 补充映射（当前只有 401/403/404/default）
 
 详见 [错误码参考](../reference/error-codes.md)。
 
@@ -300,7 +325,7 @@ public int deleteSysProductByProductIds(Long[] productIds)
 | 周次 | 重点 |
 |------|------|
 | W1 | P0-1 / P0-2 补齐 SQL + 菜单；P0-3 接入测试依赖 |
-| W2 | P0-4 / P0-5 补 Service + Mapper 测试 |
+| W2 | P0-4 / P0-5 补 Service + Mapper 测试；P0-6 前端校验 |
 | W3 | P1-1 产品分页；P1-2 树删除校验；P1-3/P1-4 错误码 |
 | W4 | P1-5 接口测试；P2 有余力再推进 |
 
@@ -320,8 +345,11 @@ public int deleteSysProductByProductIds(Long[] productIds)
 
 ## 7. 本迭代不做的事
 
+- ❌ 不做 Vue3 / Composition API 迁移
 - ❌ 不引入 Lombok（与现有手写 getter/setter 风格冲突）
+- ❌ 不改造 `views/system/**` 等框架自带页面
 - ❌ 不做 `com.ruoyi.biz` 独立成 Maven 模块（条件已具备，但当前收益不大）
+- ❌ 不引入 E2E 测试
 
 ---
 

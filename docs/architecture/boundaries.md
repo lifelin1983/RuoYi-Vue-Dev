@@ -95,6 +95,18 @@ Controller → I Xxx Service（接口）→ XxxServiceImpl → XxxMapper
 - ❌ Controller 直接 `@Autowired` Mapper
 - ❌ 跨业务模块之间直接注入对方的 Mapper
 
+### 规则 6：前端模块边界
+
+| 目录 | 归属 | 约束 |
+|------|------|------|
+| `src/api/biz/**` | 业务接口 | 一实体一文件，函数名固定 `list/get/add/update/del` 前缀 |
+| `src/views/biz/**` | 业务页面 | 一实体一目录 + `index.vue` |
+| `src/api/system/**` `src/views/system/**` | 框架自带 | **不要直接改**，需求通过扩展而非改源码满足 |
+| `src/components/**` | 全局组件 | 只放被 3 处以上复用的组件 |
+| `src/utils/**` | 通用工具 | 禁止写业务逻辑 |
+
+---
+
 ## 3. `com.ruoyi.biz` 业务包边界（本项目特有）
 
 业务代码**按层跨模块拆分**，这是本项目最重要的边界约定：
@@ -142,6 +154,8 @@ ruoyi-common ──►  BaseEntity / TreeEntity / AjaxResult / BaseController �
 - [ ] Controller 有没有直接注入 Mapper？
 - [ ] SQL 有没有写在 Java 代码里？
 - [ ] 排序字段有没有过 `SqlUtil.escapeOrderBySql()`？
+- [ ] 前端 `api/` 与 `views/` 是否一实体一文件/一目录？
+- [ ] 有没有改动 `src/api/system/**`、`src/views/system/**` 等框架自带目录？
 
 ---
 
@@ -204,7 +218,7 @@ mvn clean test
 Rule 'methods that are declared in classes that reside in a package
 'com.ruoyi.biz.controller..' and are public should be annotated with
 @PreAuthorize, because 安全红线：... 怎么修：补 @PreAuthorize，权限串需与
-sys_menu.perms 及按钮权限声明完全一致。详见 docs/architecture/boundaries.md'
+sys_menu.perms 及前端 v-hasPermi 完全一致。详见 docs/architecture/boundaries.md'
 was violated (1 times):
 Method <com.ruoyi.biz.controller.TempUnsecuredController.leak()>
 is not annotated with @PreAuthorize in (TempUnsecuredController.java:21)

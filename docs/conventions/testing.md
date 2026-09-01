@@ -1,7 +1,7 @@
 # 测试规范
 
 > **现状：本仓库已有 56 个用例且全绿**（架构 15 + 业务 41），2 个 skipped 是 `@Disabled` 固化的已知缺陷，不是失败。
-> 本文档既是规范，也是**从 0 到 1 的落地路径记录**——架构测试、Service、Mapper 三批已完成，Controller 测试待补。
+> 本文档既是规范，也是**从 0 到 1 的落地路径记录**——架构测试、Service、Mapper 三批已完成，Controller 与前端测试待补。
 > 相关文档：[编码规范](./README.md) ｜ [模块边界](../architecture/boundaries.md)
 
 ---
@@ -16,6 +16,7 @@
 6. [Mapper 测试规范](#6-mapper-测试规范)
 7. [Service 测试规范](#7-service-测试规范)
 8. [Controller 接口测试规范](#8-controller-接口测试规范)
+9. [前端测试规范](#9-前端测试规范)
 10. [测试数据与隔离](#10-测试数据与隔离)
 11. [执行与 CI](#11-执行与-ci)
 12. [覆盖率红线与推进节奏](#12-覆盖率红线与推进节奏)
@@ -36,6 +37,7 @@
 | `mybatis-spring-boot-starter-test` | ✅ 已接入 `ruoyi-system`，`2.3.1` |
 | `maven-surefire-plugin` | ✅ 已锁定 `2.22.2`（默认 2.12.4 不识别 JUnit 5） |
 | Controller 接口测试 | ❌ 仍为 0（P1-5） |
+| 前端测试框架 | ❌ 无 |
 | CI 流水线 | ❌ 无 |
 
 **已有测试类清单**
@@ -93,6 +95,7 @@ mvn test -pl ruoyi-system -am -Dtest='Sys*Test'
 | Service 单测 | JUnit 5 + Mockito | 否（纯 Mock） | 毫秒级 | **P0** |
 | Mapper 测试 | `@MybatisTest` + H2 | 是（切片） | 秒级 | **P0** |
 | Controller 测试 | `@SpringBootTest` + MockMvc | 是（全量） | 十秒级 | P1 |
+| 前端单测 | Jest + Vue Test Utils | — | 秒级 | P2（暂缓） |
 
 **原则**：能用纯 Mock 测的就不要起 Spring 容器。起容器的测试数量要严格控制。
 
@@ -619,6 +622,54 @@ private String mockLogin(String username)
 
 ---
 
+## 9. 前端测试规范
+
+### 9.1 现状与目标
+
+当前 `ruoyi-ui` 无任何测试框架。建议**第二阶段**再引入，优先级低于后端。
+
+### 9.2 选型
+
+| 层 | 框架 | 说明 |
+|----|------|------|
+| 组件单测 | Jest + `@vue/test-utils` | Vue CLI 4 可加 `@vue/cli-plugin-unit-jest` |
+| E2E | 暂不引入 | 成本高于收益 |
+
+### 9.3 优先测试对象
+
+若引入，按性价比排序：
+
+1. `src/utils/ruoyi.js` 的纯函数（`parseTime` / `tansParams` / `handleTree` / `blobValidate`）
+2. `src/utils/dict` 的数据字典转换
+3. 业务页面的 `normalizer` / `reset` 等纯数据方法
+
+### 9.4 命名与落位
+
+```
+ruoyi-ui/tests/unit/
+└── utils/ruoyi.spec.js
+```
+
+```js
+import { handleTree } from '@/utils/ruoyi'
+
+describe('utils/ruoyi.js', () => {
+  describe('handleTree', () => {
+    it('应把平铺列表转换为树结构', () => {
+      const data = [
+        { productId: 1, parentId: 0, productName: '父' },
+        { productId: 2, parentId: 1, productName: '子' }
+      ]
+      const tree = handleTree(data, 'productId', 'parentId')
+      expect(tree).toHaveLength(1)
+      expect(tree[0].children).toHaveLength(1)
+    })
+  })
+})
+```
+
+---
+
 ## 10. 测试数据与隔离
 
 ### 10.1 三不原则
@@ -741,6 +792,7 @@ jobs:
 | 第 2 批 | `SysProductServiceImpl` / `SysStudentServiceImpl` | 业务主战场 |
 | 第 3 批 | `SysProductMapper` / `SysStudentMapper` 全部 SQL | 暴露 SQL 错误与 resultMap 遗漏 |
 | 第 4 批 | `/biz/**` Controller 主流程 + 鉴权 | 防越权回归 |
+| 第 5 批 | 前端 utils 纯函数 | 视投入决定 |
 
 ### 12.4 提交前自检
 

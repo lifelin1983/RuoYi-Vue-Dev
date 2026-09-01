@@ -36,7 +36,7 @@
 - **更新后功能**：
   1. **新增 11 个纯静态工具单测**（86 用例，JUnit5+AssertJ，无 Spring 上下文）：`ArithTest`/`StringUtilsTest`/`DateUtilsTest`/`sql/SqlUtilTest`/`uuid/{IdUtils,UUID,Seq}Test`/`sign/{Base64,Md5Utils}Test`/`html/{EscapeUtil,HTMLFilter}Test`；重点覆盖安全方法——`escapeOrderBySql` 拦截 `order by updatexml` 注入、`filterKeyword` 拦截 `sleep` 关键字、HTML XSS 标签清洗、Base64/Md5 编解码往返正确。上下文/网络/文件依赖类（`SecurityUtils`/`ServletUtils`/`AddressUtils` 等）按约定不测。
   2. **门禁扩面**：`pom.xml` 的 `jacoco:check` 新增 BUNDLE 规则 `com.ruoyi.common.utils.*` → LINE COVEREDRATIO ≥ **0.85**（实测基线 **85.1%**，棘轮只升不降）。
-  3. `enforcement.yml`：测试总数 68 → **154**（新增 ruoyi-common 86）；`coverage_targets` 加 `common.utils (bundle): 85`；`measured_baseline` 补 `common.utils: 85.1%`；`still_missing` 无（前端测试按决策暂缓，不列为缺口）。
+  3. `enforcement.yml`：测试总数 68 → **154**（新增 ruoyi-common 86）；`coverage_targets` 加 `common.utils (bundle): 85`；`measured_baseline` 补 `common.utils: 85.1%`；`still_missing` 维持仅前端测试。
 - **变更原因**：① 把"核心工具零守护"补上；② 坚持棘轮——门禁下限直接取实测值，未来只升不降；③ 纯 Java、复用现有 harness，半天出成果、真实覆盖率提升最明显（按性价比优先做）。
 - **影响范围**：所有 `mvn verify`（含 CI）新增一道 `common.utils` 覆盖率校验；修改/新增 `com.ruoyi.common.utils` 下的类若无测试把该子集拉到 85% 以下，`verify` 直接 BUILD FAILURE。`ruoyi-common` 模块此前无 `src/test`，本次首次落地测试目录。
 - **验证 / 回归点**：
@@ -61,7 +61,7 @@
   4. **Controller 接口测试（P1-5）**：新增 `SysProductControllerTest`（standalone MockMvc，6 用例覆盖 list/getInfo/add/edit/remove/export），不启 Spring 容器、不需 Redis；`@PreAuthorize` 鉴权由 ArchUnit 规则兜底，本测试只验请求映射与 `AjaxResult` 结构。
   5. **JaCoCo BUNDLE 收窄**：门禁 `com.ruoyi.biz.*` → `com.ruoyi.biz.service.impl.*` + `com.ruoyi.biz.domain.*`，**排除 `com.ruoyi.biz.controller`**（Web 胶水层，由接口测试保证），避免 ruoyi-admin 中 0% 覆盖的 Controller 把整包 BUNDLE 拉到 0 打红 CI。
 - **变更原因**：补完 P1 收尾——单条删除与批量删除同源防护、依赖方向从"约定"变"门禁"、拦截从"CI 才拦"前移到"提交即拦"、Controller 行为正确性有测试兜底。
-- **影响范围**：`enforcement.yml` 测试总数 56 → 68（admin 15→25：架构 16 + Mapper 3 + Controller 6；system 41→43）；`still_missing` 移除 P1-5 与单条删除（前端测试按决策暂缓，不再列为缺口）。
+- **影响范围**：`enforcement.yml` 测试总数 56 → 68（admin 15→25：架构 16 + Mapper 3 + Controller 6；system 41→43）；`still_missing` 移除 P1-5 与单条删除，仅剩前端测试。
 - **验证 / 回归点**：
   - ✅ 本地 `mvn -B test -pl ruoyi-admin -am -Dtest=ArchitectureRulesTest,SysProductControllerTest` → 22 用例全绿（架构 16 + Controller 6，0 违规）。
   - ✅ 全量 `mvn -B clean verify` → BUILD SUCCESS（JaCoCo `check` 门禁通过，BUNDLE 已收窄）。
@@ -75,7 +75,7 @@
 
 - **涉及模块**：`ruoyi-system/.../biz/service/impl/SysProductServiceImpl.java`、`ruoyi-system/.../resources/mapper/biz/SysProductMapper.xml`、两个测试类、`enforcement.yml`
 - **原功能**：
-  - `deleteSysProductByProductIds` 直接透传 `delete ... where product_id in (...)`，**删除父节点不校验子节点**，子节点变为树形视图中永远不可见的孤儿数据。
+  - `deleteSysProductByProductIds` 直接透传 `delete ... where product_id in (...)`，**删除父节点不校验子节点**，子节点变为前端树中永远不可见的孤儿数据。
   - `SysProductMapper.selectSysProductList` 的 `<where>` 只支持 `productName`，**不支持 `parent_id` 过滤**，导致 Service 层根本无从判断"是否有子节点"。
   - 两处验收用例以 `@Disabled` 固化（已知缺陷：P1-2、P1-2-prereq）。
 - **更新后功能**：

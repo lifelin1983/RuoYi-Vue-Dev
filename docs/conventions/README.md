@@ -11,6 +11,7 @@
 2. [Java 规范](#2-java-规范)
 3. [MyBatis 规范](#3-mybatis-规范)
 4. [REST 接口规范](#4-rest-接口规范)
+5. [前端规范](#5-前端规范-vue2--element-ui)
 6. [数据库规范](#6-数据库规范)
 7. [Git 与提交规范](#7-git-与提交规范)
 8. [代码生成器使用约定](#8-代码生成器使用约定)
@@ -491,6 +492,182 @@ public class SysProductController extends BaseController
 
 ---
 
+## 5. 前端规范（Vue2 + Element UI）
+
+> ⚠️ 项目是 **Vue 2.6 + Options API**。禁止使用 `<script setup>`、Composition API、Vue3 语法。
+
+### 5.1 目录约定
+
+| 类型 | 路径 | 命名 |
+|------|------|------|
+| 接口 | `src/api/biz/xxx.js` | 小驼峰，与后端模块同名 |
+| 页面 | `src/views/biz/xxx/index.vue` | 小驼峰目录 + `index.vue` |
+| 组件 | `src/components/XxxYyy/index.vue` | 大驼峰（全局复用组件） |
+
+### 5.2 API 文件模板
+
+```js
+import request from '@/utils/request'
+
+// 查询产品管理列表
+export function listProduct(query) {
+  return request({
+    url: '/biz/product/list',
+    method: 'get',
+    params: query
+  })
+}
+
+// 查询产品管理详细
+export function getProduct(productId) {
+  return request({
+    url: '/biz/product/' + productId,
+    method: 'get'
+  })
+}
+
+// 新增产品管理
+export function addProduct(data) {
+  return request({
+    url: '/biz/product',
+    method: 'post',
+    data: data
+  })
+}
+
+// 修改产品管理
+export function updateProduct(data) {
+  return request({
+    url: '/biz/product',
+    method: 'put',
+    data: data
+  })
+}
+
+// 删除产品管理
+export function delProduct(productId) {
+  return request({
+    url: '/biz/product/' + productId,
+    method: 'delete'
+  })
+}
+```
+
+规范点：
+
+- 引用路径用 `@/` 别名（已在 `vue.config.js` 配置）
+- 函数名固定：`listXxx` / `getXxx` / `addXxx` / `updateXxx` / `delXxx`
+- 查询用 `params`，提交用 `data`
+- 单引号、**2 空格缩进**、结尾无分号（与现有文件一致）
+- 每个函数前写 `//` 中文注释
+
+### 5.3 页面 `.vue` 结构（顺序固定）
+
+```
+<template> → <script> → <style>
+```
+
+`<script>` 内顺序：
+
+```js
+export default {
+  name: "Product",              // 1. 组件名（大驼峰）
+  dicts: ['sys_status'],        // 2. 字典声明
+  components: { Treeselect },   // 3. 局部组件
+  data() { ... },               // 4. 数据
+  created() { ... },            // 5. 生命周期
+  methods: { ... }              // 6. 方法
+}
+```
+
+### 5.4 `data()` 字段顺序（照抄脚手架）
+
+```js
+data() {
+  return {
+    // 遮罩层
+    loading: true,
+    // 显示搜索条件
+    showSearch: true,
+    // 产品管理表格数据
+    productList: [],
+    // 产品管理树选项
+    productOptions: [],
+    // 弹出层标题
+    title: "",
+    // 是否显示弹出层
+    open: false,
+    // 是否展开，默认全部展开
+    isExpandAll: true,
+    // 重新渲染表格状态
+    refreshTable: true,
+    // 查询参数
+    queryParams: {
+      productName: null,
+    },
+    // 表单参数
+    form: {},
+    // 表单校验
+    rules: {
+    }
+  }
+}
+```
+
+### 5.5 方法命名（固定套路）
+
+| 方法 | 用途 | 注释写法 |
+|------|------|---------|
+| `getList()` | 加载列表 | `/** 查询产品管理列表 */` |
+| `handleQuery()` | 搜索 | `/** 搜索按钮操作 */` |
+| `resetQuery()` | 重置搜索 | `/** 重置按钮操作 */` |
+| `handleAdd(row)` | 新增 | `/** 新增按钮操作 */` |
+| `handleUpdate(row)` | 修改 | `/** 修改按钮操作 */` |
+| `handleDelete(row)` | 删除 | `/** 删除按钮操作 */` |
+| `submitForm()` | 提交 | `/** 提交按钮 */` |
+| `cancel()` | 取消 | `// 取消按钮` |
+| `reset()` | 表单重置 | `// 表单重置` |
+| `getTreeselect()` | 加载树 | `/** 查询产品管理下拉树结构 */` |
+| `normalizer(node)` | 树结构转换 | `/** 转换产品管理数据结构 */` |
+| `toggleExpandAll()` | 展开/折叠 | `/** 展开/折叠操作 */` |
+
+模板内事件绑定：`@click="handleQuery"`、`@keyup.enter.native="handleQuery"`。
+
+### 5.6 权限与字典
+
+```html
+<!-- 按钮权限 -->
+<el-button v-hasPermi="['biz:product:add']" @click="handleAdd">新增</el-button>
+
+<!-- 字典回显 -->
+<dict-tag :options="dict.type.sys_status" :value="scope.row.status"/>
+
+<!-- 字典单选 -->
+<el-radio-group v-model="form.status">
+  <el-radio v-for="dict in dict.type.sys_status" :key="dict.value" :label="dict.value">
+    {{dict.label}}
+  </el-radio>
+</el-radio-group>
+```
+
+### 5.7 提示与工具
+
+- 成功：`this.$modal.msgSuccess("修改成功")`
+- 错误：`this.$modal.msgError("操作失败")`
+- 确认框：`this.$modal.confirm('是否确认删除？').then(...)`
+- 表单重置：`this.resetForm("form")`
+- 树形数据转换：`this.handleTree(response.data, "productId", "parentId")`
+- 下载：`this.download('biz/product/export', {...}, \`product_${new Date().getTime()}.xlsx\`)`
+
+### 5.8 其他前端约定
+
+- 样式：`<style scoped>` 优先；全局样式放 `src/assets/styles/`
+- 双引号用于 HTML 属性，单引号用于 JS 字符串（与现有代码一致）
+- 组件名、prop 名用短横线（kebab-case）在模板中使用
+- 不要直接修改 `src/views/system/**`、`src/api/system/**`
+
+---
+
 ## 6. 数据库规范
 
 ### 6.1 命名
@@ -582,11 +759,13 @@ hotfix/xxx  紧急修复
 - [ ] 无硬编码的密钥、密码、路径
 - [ ] Controller 每个方法都有 `@PreAuthorize`
 - [ ] 写操作都有 `@Log`
+- [ ] 新增字段已同步 `resultMap` + `selectXxxVo` + 前端表格列
 - [ ] 建表/改表 SQL 已并入 `sql/`
+- [ ] 前端权限串与后端一致
 
 ### 7.4 .gitignore
 
-不要提交：`target/`、`.idea/`、`*.log`
+不要提交：`target/`、`ruoyi-ui/node_modules/`、`ruoyi-ui/dist/`、`.idea/`、`*.log`
 
 ---
 
@@ -614,10 +793,13 @@ hotfix/xxx  紧急修复
 | `IXxxService.java` | `ruoyi-system/src/main/java/com/ruoyi/biz/service/` |
 | `XxxServiceImpl.java` | `ruoyi-system/src/main/java/com/ruoyi/biz/service/impl/` |
 | `XxxMapper.xml` | `ruoyi-system/src/main/resources/mapper/biz/` |
+| `xxx.js` | `ruoyi-ui/src/api/biz/` |
+| `index.vue` | `ruoyi-ui/src/views/biz/xxx/` |
 | `.sql`（菜单） | 入库后并入 `sql/` |
 
 ### 8.2 生成后必改项
 
 - [ ] 类头 `@author` 改为实际作者（生成器默认是 `ruoyi`）
 - [ ] 补充业务校验逻辑（脚手架只有空壳）
+- [ ] 前端 `rules` 补充必填/长度校验（脚手架生成的是空 `{}`）
 - [ ] 确认 `resultMap` 覆盖了全部字段

@@ -7,15 +7,18 @@
 
 ## 1. 整体形态
 
-基于 Spring Boot 的后台管理系统，内嵌 Tomcat 单体形态部署，通过 HTTP + JWT 提供 REST 接口。
+前后端分离的后台管理系统。后端以 Spring Boot 内嵌 Tomcat 单体形态部署，前端为 Vue2 SPA 静态资源，
+两者通过 HTTP + JWT 通信，开发期由 webpack devServer 代理转发。
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  客户端 (HTTP / JSON)                                          │
-│  （浏览器 / 移动端 / 第三方系统通过统一 REST 接入）            │
+│  浏览器 (SPA)                                                 │
+│  Vue 2.6.12 + Element UI 2.15.14 + Vuex + Vue Router          │
+│  dev: :80            prod: Nginx 托管 dist/                   │
 └───────────────────────────┬──────────────────────────────────┘
                             │  HTTP / JSON
                             │  Authorization: Bearer <jwt>
+                            │  （开发期 devServer proxy → :8080）
 ┌───────────────────────────▼──────────────────────────────────┐
 │  Spring Boot 2.5.15  (:8080, context-path /)                  │
 │                                                               │
@@ -73,6 +76,25 @@
 | 内嵌容器 | Tomcat | `9.0.112` | 显式覆盖 |
 | 日志 | Logback | `1.2.13` | 显式覆盖 |
 
+### 2.2 前端
+
+| 领域 | 选型 | 版本 |
+|------|------|------|
+| 框架 | Vue | `2.6.12` |
+| UI | Element UI | `2.15.14` |
+| 路由 | vue-router | `3.4.9` |
+| 状态 | Vuex | `3.6.0` |
+| 请求 | axios | `0.30.3` |
+| 构建 | @vue/cli-service | `4.4.6` |
+| 图表 | ECharts | `5.4.0` |
+| 树选择 | @riophae/vue-treeselect | `0.4.0` |
+| 富文本 | quill | `2.0.2` |
+| 其他 | js-cookie / jsencrypt / nprogress / file-saver / vuedraggable | 见 `package.json` |
+
+> **注意**：项目是 **Vue2 Options API**，不是 Vue3 / Composition API。不要用 `<script setup>`。
+
+---
+
 ## 3. 分层与调用链
 
 ### 3.1 标准四层
@@ -99,13 +121,13 @@ Mapper XML（ruoyi-system/src/main/resources/mapper/**）  ← SQL 落点
 以 `GET /biz/student/list?pageNum=1&pageSize=10` 为例：
 
 ```
-① 客户端  src/api/biz/student.js  listStudent(query)
+① 前端  src/api/biz/student.js  listStudent(query)
      └─ request({ url:'/biz/student/list', method:'get', params })
 ② utils/request.js  请求拦截器
      ├─ 注入 Authorization: Bearer <token>
      ├─ GET 参数 tansParams 拼到 URL
      └─ POST/PUT 做 1s 内防重复提交校验（sessionStorage）
-③ 请求经 HTTP 到达后端入口（Nginx :80 反代至 :8080）
+③ devServer proxy → http://localhost:8080
 ④ XssFilter → JwtAuthenticationTokenFilter
      └─ 解析 token → LoginUser → 存入 AuthenticationContextHolder
      └─ 刷新 token 有效期（Redis）
@@ -118,7 +140,7 @@ Mapper XML（ruoyi-system/src/main/resources/mapper/**）  ← SQL 落点
      │     └─ SysStudentMapper.selectSysStudentList → XML SQL
      └─ getDataTable(list) → TableDataInfo{total, rows, code, msg}
 ⑧ 响应拦截器：code===200 → 直接返回 res.data
-⑨ 客户端把响应数据渲染为树形表格与分页组件
+⑨ 前端把 rows 灌进 el-table，total 灌进 pagination 组件
 ```
 
 ### 3.3 横切能力
@@ -171,6 +193,8 @@ Mapper XML（ruoyi-system/src/main/resources/mapper/**）  ← SQL 落点
 | 日志 | `ruoyi-admin/src/main/resources/logback.xml` |
 | MyBatis 全局配置 | `ruoyi-admin/src/main/resources/mybatis/mybatis-config.xml` |
 | 国际化 | `ruoyi-admin/src/main/resources/i18n/messages.properties` |
+| 前端环境 | `ruoyi-ui/.env.*` → `VUE_APP_BASE_API` |
+| 前端构建 | `ruoyi-ui/vue.config.js` |
 
 ---
 
@@ -207,13 +231,58 @@ Mapper XML（ruoyi-system/src/main/resources/mapper/**）  ← SQL 落点
 
 ---
 
+## 6. 前端架构
+
+```
+ruoyi-ui/src/
+├── api/            按模块划分：biz / monitor / system / tool
+├── assets/         样式、图标（svg-sprite）、图片
+├── components/     全局组件（Pagination / RightToolbar / DictTag / FileUpload / ImageUpload …）
+├── directive/      自定义指令：v-hasPermi / v-hasRole / dialog 拖拽
+├── layout/         整体布局（Sidebar / Navbar / TagsView / AppMain）
+├── plugins/        cache（session/local 缓存）、modal、download、tab 等
+├── router/         静态路由 + 动态路由（后端菜单驱动）
+├── store/          Vuex：modules（app/settings/user/permission/dict）+ getters
+├── utils/          request / auth / errorCode / ruoyi / dict / generator
+└── views/          页面：biz / dashboard / monitor / system / tool
+```
+
+### 6.1 请求与响应契约
+
+- 统一出口：`utils/request.js`（axios 实例）
+- 成功判定：`res.data.code === 200` → 直接返回 `res.data`
+- `code === 401` → 弹窗提示重新登录（全局只弹一次，`isRelogin.show` 去重）
+- `code === 500` → `Message.error(msg)` 并 reject
+- `code === 601` → `Message.warning(msg)` 并 reject
+- 其他非 200 → `Notification.error`
+- 文件下载走 `download()`（`responseType: blob` + `file-saver`）
+
+### 6.2 权限模型
+
+| 层 | 机制 |
+|----|------|
+| 菜单路由 | 后端 `sys_menu` 动态下发 → 前端 `router` 拼接 |
+| 按钮 | `v-hasPermi="['biz:product:add']"` / `v-hasRole` |
+| 接口 | `@PreAuthorize("@ss.hasPermi('biz:product:add')")` |
+| 数据 | `@DataScope` 拼 SQL 片段 |
+
+两侧权限字符串必须完全一致，前端漏配只是按钮不显示，后端漏配则是**真实越权漏洞**。
+
+### 6.3 字典机制
+
+`dicts: ['sys_status']` 声明 → `store/modules/dict.js` 加载 → 模板里 `<dict-tag :options="dict.type.sys_status" :value="scope.row.status"/>`。
+
+---
+
 ## 7. 部署形态
 
-| 环境 | 后端 |
-|------|------|
-| 开发 | `mvn spring-boot:run`（:8080） |
-| 预发 | `mvn package` → `ruoyi-admin/target/*.jar` |
-| 生产 | `java -jar` 运行 jar；`swagger.enabled` 建议置 `false` |
+| 环境 | 后端 | 前端 |
+|------|------|------|
+| 开发 | `mvn spring-boot:run`（:8080） | `npm run dev`（:80，代理转发） |
+| 预发 | `npm run build:stage` → `dist/` | `mvn package` → `ruoyi-admin/target/*.jar` |
+| 生产 | `java -jar` 运行 jar；`swagger.enabled` 建议置 `false` | `dist/` 交由 Nginx 托管，`VUE_APP_BASE_API` 指向后端域名 |
+
+`vue.config.js` 已开启 gzip 预压缩（`CompressionPlugin`）与 chunk 拆分，Nginx 需配合开启 `gzip_static`。
 
 ---
 
@@ -230,7 +299,7 @@ Mapper XML（ruoyi-system/src/main/resources/mapper/**）  ← SQL 落点
 | 问题 | 影响 |
 |------|------|
 | CI 质量门禁未接入 | 架构约束仅本地 `mvn test` 生效，无法阻止违规代码合入 |
-| Controller 接口测试缺失 | 越权回归缺少接口测试兜底 |
+| Controller 接口测试与前端测试缺失 | 越权回归与前端纯函数无自动化兜底 |
 | 业务表 SQL 未纳入版本管理 | 新环境无法一键初始化 |
 | `SysProductController.list()` 无分页 | 树形数据膨胀后接口性能劣化 |
 | `mapUnderscoreToCamelCase` 未开启 | 每加字段都要改两处（实体 + resultMap），易漏 |
@@ -245,7 +314,7 @@ Mapper XML（ruoyi-system/src/main/resources/mapper/**）  ← SQL 落点
 |------|------|
 | `framework/config/SecurityConfig.java` | 改错直接全站 401/403 |
 | `framework/security/filter/JwtAuthenticationTokenFilter.java` | 影响全量鉴权链路 |
-| `framework/interceptor/RepeatSubmitInterceptor.java` | 防重提交拦截器可能与客户端防重逻辑叠加，易冲突 |
+| `framework/interceptor/RepeatSubmitInterceptor.java` | 前端已有防重提交逻辑，双端易冲突 |
 | `ruoyi-generator/resources/vm/**` | 改模板会影响后续所有生成代码 |
 | `ruoyi-common/**` 下的工具类 | 影响面覆盖全部模块 |
 | 树形实体删除逻辑 | 当前未校验子节点，误删产生孤儿数据 |
