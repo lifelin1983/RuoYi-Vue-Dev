@@ -197,3 +197,57 @@ jobs:
             coverage-summary.txt
             coverage-badge.svg
           if-no-files-found: ignore
+
+  # ------------------------------------------------------------------
+  # Nightly — 自动回写覆盖率基线（熵管理：从根上消灭人工声明滞后）
+  # 仅 schedule 触发时运行。从 build-and-test 上传的 jacoco-reports artifact
+  # 实算四个门禁目标的实际覆盖率，回写 enforcement.yml 的 measured_baseline
+  # （观测事实自动同步）；门槛阈值 coverage_targets 仍由人工维护（策略归人，
+  # 观测归机器）。值无变化则不提交（避免 CI 递归 / 空提交）。
+  # 依赖：build-and-test 成功（覆盖率退化时不回写，避免掩盖门禁被打破）。
+  # 权限前提：repo Settings > Actions > General > Workflow permissions = Read and write
+  # ------------------------------------------------------------------
+  nightly-sync-baseline:
+    name: Nightly - sync coverage baseline
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    needs: build-and-test
+    permissions:
+      contents: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download JaCoCo reports artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: jacoco-reports
+          path: downloaded
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Sync coverage baseline (rewrite measured_baseline)
+        id: sync
+        run: |
+          python3 scripts/sync-coverage-baseline.py
+          if [ -n "$(git diff -- .harness/enforcement.yml)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit & push if changed
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .harness/enforcement.yml
+          git commit -m "chore(harness): nightly 回写覆盖率基线 [skip ci]"
+          git push origin HEAD:main

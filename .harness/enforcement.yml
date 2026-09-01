@@ -299,10 +299,10 @@ ci_jobs:
       （jacoco:check 报 rule violated）。证明门禁真实生效、非假绿。
       临时改动已还原。
     measured_baseline:
-      com.ruoyi.biz.service.impl: "100% (SysProduct/SysStudent)"
+      com.ruoyi.biz.service.impl: "100.00% (SysProduct/SysStudent)"
       com.ruoyi.biz.domain: "整包 66.67%；逐类 SysProduct 58.82% (10/17 行) / SysStudent 70.97% (22/31 行)"
       com.ruoyi.biz_bundle: "78.08% (57/73 行)"
-      com.ruoyi.common.utils: "85.1% (12 个已加载类精确集合：Arith 100% / Base64 94.9% / SqlUtil 94.1% / DateUtils 91.4% / StringUtils 89.7% / UUID 88.0% / Seq 88.2% / IdUtils 80.0% / HTMLFilter 78.6% / EscapeUtil 63.0% / Md5Utils 63.6%)"
+      com.ruoyi.common.utils: "85.04% (11 个已加载类精确集合：Arith 100.00% / DateUtils 92.86% / StringUtils 89.66% / EscapeUtil 62.96% / HTMLFilter 78.63% / Base64 94.89% / Md5Utils 63.64% / SqlUtil 94.12% / IdUtils 80.00% / Seq 88.24% / UUID 88.04%)"
 
   - name: coverage-visibility
     priority: P1
