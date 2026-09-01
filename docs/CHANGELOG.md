@@ -5,6 +5,28 @@
 
 ---
 
+## 2026-09-01 · v3.9.2-harness-p1e · CI 增强（覆盖率趋势 + nightly 巡检 + 门禁可见性）
+
+- **涉及模块**：`.github/workflows/ci.yml`、`enforcement.yml`、`CLAUDE.md`（待提交；当前公司零信任代理中断，推送与分支保护设置待网络恢复）
+- **原功能**：
+  1. CI 三道闸门（文档新鲜度 / 架构约束+全量测试 / 覆盖率门禁）已通电，但覆盖率**无可见趋势**——门禁只在校验失败时报红，退化过程不可见。
+  2. `common.utils` 徽章聚合脚本用 `com.ruoyi.common.utils.` 粗粒度前缀，把 27 个未测 context 类也算入，得出 **27%** 的误导数字，与门禁真实守护范围（精确列举的 12 个已加载类、85.1%）严重不符。
+  3. 熵管理仅靠 push/PR 触发，无推送期间的长周期漂移无主动发现机制。
+- **更新后功能**：
+  1. **覆盖率趋势 + 徽章 + PR 评论**：`ci.yml` 新增 Aggregate 步骤，聚合各模块 `jacoco.csv`，**仅统计受门禁守护的类**（精确镜像 `pom.xml` 的 includes、按模块归属、排除未加载类），生成 `coverage-badge.svg`（当前门禁守护范围真实覆盖 ~84%）并上传 artifact；对 PR 自动发覆盖率评论。
+  2. **nightly 周期巡检**：`on.schedule` 每天 02:00（北京）重跑全部门禁，捕获无推送期间的文档/约束漂移（熵管理兜底）。
+  3. 修正元数据口径：`enforcement.yml` 的 `coverage-gate` 规则 `includes` 从 `com.ruoyi.common.utils.*`（JaCoCo `*` 仅匹配顶级类，会漏掉 `sql/uuid/sign/html` 子包）改为**精确列举**，与 `pom.xml` 严格一致；新增 `coverage-visibility` 与 `branch-protection` 两条 `ci_jobs` 声明。
+  4. （计划）`main` 分支保护：required_status_checks 要求 Gate 1 / Gate 2 通过方可合入 PR；不强制 PR 以保留直推 main 工作流。
+- **变更原因**：① 让门禁退化一眼可见（趋势 > 单次门禁）；② 诚实——徽章数字与门禁同一口径，不显示误导性低值；③ 熵管理从"事件触发"补上"周期巡检"。
+- **影响范围**：`ci.yml` 每次运行新增徽章/PR 评论产物；nightly 每天一次全量构建。不改变任何门禁阈值。
+- **验证 / 回归点**：
+  - ✅ 本地重算：精确门禁集合（12 个已加载类）LINE **85.06%**、合并两模块门禁守护范围 LINE **84.48%**，与 `pom.xml` 门禁阈值（common ≥0.85 / biz ≥0.60）一致。
+  - ✅ `ci.yml` 经 PyYAML 解析校验通过（jobs: docs-freshness + build-and-test；schedule 存在；Aggregate 步骤存在）。
+  - ⚠️ `mvn -pl ruoyi-common test` 不触发 `jacoco:check`（check 绑 verify 阶段），故门禁只在 `clean verify` 时强制——已被前期多次 run 反向验证。
+  - ⏳ 推送与分支保护：因公司零信任代理 `127.0.0.1:3213` 临时拒绝连接、直连 GitHub 亦 `http_code=000`，待网络恢复后提交并设保护。
+
+---
+
 ## 2026-09-01 · v3.9.2-harness-p1d · common.utils 子集单测 + 覆盖率门禁扩面（后端口径）
 
 - **涉及模块**：新增 `ruoyi-common/src/test/...` 11 个测试类（86 用例）、`pom.xml`（JaCoCo 新增 `common.utils` BUNDLE 规则）、`enforcement.yml`、`CLAUDE.md`

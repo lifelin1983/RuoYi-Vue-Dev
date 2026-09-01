@@ -73,12 +73,17 @@ cd ruoyi-ui && npm run dev                           # 前端 :80
 违反即 `mvn test` 失败。规则清单见 docs/architecture/boundaries.md 第 5 节。
 
 覆盖率由 JaCoCo 在 `verify` 阶段强制执行（门禁覆盖 `com.ruoyi.biz` 业务实现层与实体层，
-+ `com.ruoyi.common.utils` 纯静态工具子集；棘轮基线 service.impl 100% / biz.domain ~50% /
++ `com.ruoyi.common.utils` 纯静态工具**精确列举**子集——Arith/StringUtils/DateUtils/SqlUtil
++ uuid/sign/html 三个子包，非粗粒度前缀；棘轮基线 service.impl 100% / biz.domain ~50% /
 biz 整包 ~70% / common.utils 子集 85.1%；`com.ruoyi.biz.controller` 属 Web 胶水层，
 不纳入门禁，由 SysProductControllerTest 等接口测试保证行为正确）。新增或修改
 `com.ruoyi.biz` / `com.ruoyi.common.utils` 下的类必须同步补测试，否则 `mvn clean verify` 会因
 `jacoco:check` 规则 violated 而 BUILD FAILURE。规则见 `.harness/enforcement.yml`
-的 `coverage-gate`。
+的 `coverage-gate`（其 includes 与 `pom.xml` 严格一致）。
+
+CI 把各模块 `jacoco.csv` 聚合为门禁守护范围的真实覆盖率（当前 ~84%），生成
+`coverage-badge.svg` 并上传 artifact，对 PR 自动发覆盖率评论；`on.schedule` 每天 02:00（北京）
+重跑全部门禁做熵管理巡检。
 
 本机 pre-commit 钩子（`scripts/git-hooks/pre-commit`，由 `scripts/setup-hooks.sh` 一次性启用）
 提交前先跑 `scripts/check-doc-links.sh --strict`，文档漂移即阻止提交；

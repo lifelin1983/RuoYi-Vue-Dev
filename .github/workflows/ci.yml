@@ -3,9 +3,10 @@ name: CI
 # Harness Engineering, Pillar 2 (Architectural Constraints) — 把机器强制
 # 从"本地 mvn test"升级为"不可合入的闸门"。
 #
-# 两个闸门并行跑：
+# 三个并行闸门：
 #   Gate 1  docs-freshness   文档漂移（秒级，不需要 JVM）
-#   Gate 2  build-and-test   架构约束 + 全量测试（需要 Redis service）
+#   Gate 2  build-and-test   架构约束 + 全量测试 + 覆盖率门禁（需要 Redis service）
+#   (nightly) 周期巡检        每天定时重跑，捕获"无推送期间的文档/约束漂移"（熵管理）
 #
 # 已推送至 GitHub（私有仓库 RuoYi-Vue-Dev），Actions 默认启用即生效。
 # 若迁移到 GitLab / Gitee，需改写为 .gitlab-ci.yml，job 内容一致。
@@ -14,7 +15,14 @@ on:
   push:
     branches: [master, main]
   pull_request:
+  schedule:
+    # 每天 02:00 (北京时间) 跑一次，捕获无推送期间的漂移（熵管理兜底）
+    - cron: '0 18 * * *'
   workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -37,7 +45,7 @@ jobs:
         run: bash scripts/check-doc-links.sh --strict
 
   # ------------------------------------------------------------------
-  # Gate 2 — 架构约束 + 全量测试
+  # Gate 2 — 架构约束 + 全量测试 + 覆盖率门禁
   # ------------------------------------------------------------------
   build-and-test:
     name: Gate 2 - architecture and tests
@@ -45,7 +53,7 @@ jobs:
     timeout-minutes: 30
 
     # Controller 鉴权测试（P1-5）走 Spring Security + JWT，需要 Redis。
-    # 当前用例（架构 15 + Service 18 + Mapper 23）是切片测试，并不需要，
+    # 当前用例（架构 16 + Service + Mapper + Controller）是切片测试，并不需要，
     # 但提前起 service 可以避免"等写了 Controller 测试 CI 才炸"。
     services:
       redis:
@@ -82,10 +90,94 @@ jobs:
       # clean verify 才会触发 JaCoCo 的 report + check 两个 goal：
       #   report 生成 target/site/jacoco/ 覆盖率报告
       #   check  按 enforcement.yml 的 coverage-baseline 规则做门禁校验
-      # 当前基线阶段 haltOnFailure=false（不阻断合入，只暴露数字），
-      # 待 ruoyi-system 等模块补上单测后再翻转为 true。
+      # 当前 haltOnFailure=true（覆盖率不达标直接 BUILD FAILURE）。
       - name: Gate 2b - full test suite + coverage gate
         run: mvn -B clean verify -DfailIfNoTests=false
+
+      # 聚合各模块 jacoco.csv，算出整仓覆盖率，生成徽章 + 摘要。
+      # 放 if: always()：即便 2b 因覆盖率不达标失败，也能产出当前数值用于评论/徽章。
+      - name: Aggregate JaCoCo coverage + generate badge
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import csv, glob, os
+          # 精确镜像 pom.xml jacoco check 的 includes（与门禁同一口径，否则徽章数字会误导）。
+          # 说明：JaCoCo 的 '*' 不匹配子包的点，等价于「前缀 + 剩余部分不含点」；
+          #       'uuid.*' 这类子包用前缀匹配。按模块归属分别取数，避免跨模块加载的类被重复/错算。
+          GATED = {
+              'ruoyi-common': {
+                  'exact': ['com.ruoyi.common.utils.Arith',
+                            'com.ruoyi.common.utils.StringUtils',
+                            'com.ruoyi.common.utils.DateUtils',
+                            'com.ruoyi.common.utils.sql.SqlUtil'],
+                  'prefix': ['com.ruoyi.common.utils.uuid.',
+                             'com.ruoyi.common.utils.sign.',
+                             'com.ruoyi.common.utils.html.'],
+              },
+              'ruoyi-system': {
+                  'exact': [],
+                  'prefix': ['com.ruoyi.biz.service.impl.', 'com.ruoyi.biz.domain.'],
+              },
+          }
+          def mod_of(path):
+              parts = path.replace('\\', '/').split('/')
+              if 'ruoyi-common' in parts: return 'ruoyi-common'
+              if 'ruoyi-system' in parts: return 'ruoyi-system'
+              return None
+          def in_gated(fqn, mod):
+              g = GATED.get(mod)
+              if not g: return False
+              if fqn in g['exact']: return True
+              for p in g['prefix']:
+                  if fqn.startswith(p) and '.' not in fqn[len(p):]:
+                      return True   # JaCoCo '*' = 前缀后不再有点（仅顶级类）
+              return False
+          ic=im=lc=lm=bc=bm=0
+          files = glob.glob('**/target/site/jacoco/jacoco.csv', recursive=True)
+          for f in files:
+              mod = mod_of(f)
+              if mod is None or mod not in GATED: continue
+              with open(f) as fh:
+                  r = csv.reader(fh); h = next(r)
+                  I = dict((k, i) for i, k in enumerate(h))
+                  P = h.index('PACKAGE'); C = h.index('CLASS')
+                  for row in r:
+                      fqn = row[P] + '.' + row[C]
+                      if not in_gated(fqn, mod): continue
+                      ric=int(row[I['INSTRUCTION_COVERED']]); rim=int(row[I['INSTRUCTION_MISSED']])
+                      if ric+rim==0: continue   # 未加载（未执行）的类不计入，与 JaCoCo BUNDLE 语义一致
+                      ic+=ric; im+=rim
+                      lc+=int(row[I['LINE_COVERED']]);     lm+=int(row[I['LINE_MISSED']])
+                      bc+=int(row[I['BRANCH_COVERED']]);   bm+=int(row[I['BRANCH_MISSED']])
+          itot=ic+im; ltot=lc+lm; btot=bc+bm
+          inst=100*ic/itot if itot else 0.0
+          line=100*lc/ltot if ltot else 0.0
+          br  =100*bc/btot if btot else 0.0
+          color = '#4c1' if line>=80 else ('#dfb317' if line>=60 else '#e05d44')
+          with open('coverage-summary.txt','w') as o:
+              o.write(f"INSTRUCTION {inst:.2f}%\nLINE {line:.2f}%\nBRANCH {br:.2f}%\n")
+          with open('coverage-badge.svg','w') as o:
+              o.write(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="184" height="20">'
+                '<rect width="114" height="20" fill="#555"/>'
+                f'<rect x="114" width="70" height="20" fill="{color}"/>'
+                '<text x="8" y="14" fill="#fff" font-family="Verdana" font-size="11">Coverage (gated)</text>'
+                f'<text x="122" y="14" fill="#fff" font-family="Verdana" font-size="11">{line:.1f}%</text>'
+                '</svg>')
+          print("Aggregated %d jacoco.csv (mirrors pom jacoco gate exactly)" % len(files))
+          print("INSTRUCTION=%.2f%% LINE=%.2f%% BRANCH=%.2f%%" % (inst,line,br))
+          PY
+
+      - name: Post coverage comment on PR
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR="${{ github.event.pull_request.number }}"
+          BODY="## JaCoCo Coverage — 门禁守护范围 (biz + common.utils)$(printf '\n')"
+          while IFS= read -r l; do BODY="${BODY}$(printf '\n')- ${l}"; done < coverage-summary.txt
+          BODY="${BODY}$(printf '\n')\nGate 详情见 Actions run 产物 jacoco-reports / coverage-badge.svg"
+          gh pr comment "$PR" --body "$BODY"
 
       - name: Upload surefire reports
         if: always()
@@ -95,10 +187,13 @@ jobs:
           path: '**/target/surefire-reports/**'
           if-no-files-found: ignore
 
-      - name: Upload JaCoCo coverage reports
+      - name: Upload JaCoCo coverage reports + badge
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-reports
-          path: '**/target/site/jacoco/**'
+          path: |
+            **/target/site/jacoco/**
+            coverage-summary.txt
+            coverage-badge.svg
           if-no-files-found: ignore

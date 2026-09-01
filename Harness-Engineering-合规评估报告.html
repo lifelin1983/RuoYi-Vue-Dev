@@ -76,6 +76,17 @@
     </div>
   </div>
 
+  <div style="background:#e7f7ee;border:1px solid #9fd8b8;border-radius:10px;padding:14px 18px;margin:0 0 16px">
+    <div style="font-size:14px;font-weight:600;color:#1a7a45;margin-bottom:6px">更新 2026-09-01（晚间）· P1 CI 增强：覆盖率趋势 + nightly 巡检 + 门禁可见性（待推送）</div>
+    <div style="font-size:13px;color:#2c6b47;line-height:1.7">
+      <b>覆盖率可见性</b>：<code>ci.yml</code> 新增 Aggregate 步骤，聚合各模块 <code>jacoco.csv</code>，<b>仅统计受门禁守护的类</b>（精确镜像 <code>pom.xml</code> 的 includes、按模块归属、排除未加载类），生成 <code>coverage-badge.svg</code>（当前门禁守护范围真实覆盖 <b>~84%</b>）并上传 artifact；对 PR 自动发覆盖率评论。<br>
+      <b>nightly 周期巡检</b>：<code>on.schedule</code> 每天 02:00（北京）重跑全部门禁，捕获无推送期间的文档/约束漂移（熵管理兜底）。<br>
+      <b>口径修正（honest fix）</b>：原徽章脚本用 <code>com.ruoyi.common.utils.</code> 粗粒度前缀，把 27 个未测 context 类也算入，得出 <b>27%</b> 误导数字；根因是 <code>enforcement.yml</code> 的 <code>coverage-gate</code> 曾写 <code>com.ruoyi.common.utils.*</code>，而 JaCoCo 的 <code>*</code> 仅匹配顶级类（漏掉 <code>sql/uuid/sign/html</code> 子包）。两处均改为<b>精确列举</b>，与 <code>pom.xml</code> 严格一致；本地重算确认门禁集合 12 个类 LINE <b>85.06%</b>、合并两模块门禁守护范围 <b>84.48%</b>。<br>
+      <b>enforcement.yml / CHANGELOG / CLAUDE.md 同步</b>：<code>coverage-gate</code> 规则 <code>includes</code> 改为精确列举；新增 <code>coverage-visibility</code> 与 <code>branch-protection</code>（state: blocked_network）两条 <code>ci_jobs</code> 声明。<br>
+      <span style="color:#b3412a">⏳ 待推送</span>：因公司零信任代理 <code>127.0.0.1:3213</code> 临时拒绝连接、直连 GitHub 亦 <code>http_code=000</code>，<code>ci.yml</code> 与元数据变更暂留本地，待网络恢复后提交并设 <code>main</code> 分支保护（required_status_checks: Gate1/Gate2）。
+    </div>
+  </div>
+
   <div class="card">
     <h3 style="margin-top:0">范式基准（评估所用原则来自何处）</h3>
     <p class="note">Harness Engineering 认为 <b>Agent = Model + Harness</b>，工程重心从"调提示词"转向"设计约束/验证/反馈回路"。综合 OpenAI、Anthropic、中国工业互联网研究院、GMO 等公开论述，其内核一致：</p>

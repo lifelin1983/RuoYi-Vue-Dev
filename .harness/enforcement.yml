@@ -170,7 +170,7 @@ test_requirements:
     "com.ruoyi.biz.service.impl": 100   # 实测 100%（SysProduct/SysStudent），硬门槛
     "com.ruoyi.biz.domain": 40          # 实测 ~50%（SysProduct 47% / SysStudent 60%）
     "com.ruoyi.biz (bundle)": 60        # 实测 ~70%，整体下限
-    "com.ruoyi.common.utils (bundle)": 85   # 实测 85.1%（11 个纯静态类子集），棘轮下限
+    "com.ruoyi.common.utils (bundle)": 85   # 实测 85.1%（12 个已加载类精确集合，与 pom includes 严格一致），棘轮下限
     # 暂不在门禁内（无字节码可插桩 / 无实测单测）：
     #   com.ruoyi.biz.mapper   → MyBatis 动态代理，JaCoCo 无法测量（靠 Mapper 测试存在性兜底）
     #   com.ruoyi.system.*     → RuoYi 核心，仍无量级单测，待补后再纳入 includes
@@ -275,8 +275,17 @@ ci_jobs:
         includes: ["com.ruoyi.biz.*"]
         line_coveredratio_min: 0.60     # 整包下限
       - element: BUNDLE
-        includes: ["com.ruoyi.common.utils.*"]
-        line_coveredratio_min: 0.85     # 纯静态工具子集实测 85.1%（Arith/UUID/Seq/IdUtils/Base64/Md5Utils/StringUtils/DateUtils/SqlUtil/EscapeUtil/HTMLFilter）
+        # 注意：JaCoCo 的 '*' 不匹配子包的点，故用精确列举（顶级类）+ 子包前缀。
+        # 与 pom.xml jacoco:check 的 includes 严格一致（徽章聚合脚本亦镜像此集合）。
+        includes:
+          - "com.ruoyi.common.utils.Arith"
+          - "com.ruoyi.common.utils.StringUtils"
+          - "com.ruoyi.common.utils.DateUtils"
+          - "com.ruoyi.common.utils.sql.SqlUtil"
+          - "com.ruoyi.common.utils.uuid.*"
+          - "com.ruoyi.common.utils.sign.*"
+          - "com.ruoyi.common.utils.html.*"
+        line_coveredratio_min: 0.85     # 纯静态工具子集实测 85.1%（12 个已加载类：Arith 100% / Base64 94.9% / SqlUtil 94.1% / DateUtils 91.4% / StringUtils 89.7% / UUID 88.0% / Seq 88.2% / IdUtils 80.0% / HTMLFilter 78.6% / EscapeUtil 63.0% / Md5Utils 63.6%）
     negative_test: |
       已做反向验证：临时将 service.impl 门槛从 1.00 降到 0.50 再跑 verify，
       BUILD 仍 SUCCESS；恢复 1.00 且故意删除一个 biz 单测后 verify 转 FAILURE
@@ -286,4 +295,29 @@ ci_jobs:
       com.ruoyi.biz.service.impl: "100% (SysProduct/SysStudent)"
       com.ruoyi.biz.domain: "~50% (SysProduct 47% / SysStudent 60%)"
       com.ruoyi.biz_bundle: "~70%"
-      com.ruoyi.common.utils: "85.1% (11 个纯静态类：Arith 100% / Base64 94.9% / SqlUtil 94.1% / DateUtils 91.4% / StringUtils 89.7% / EscapeUtil 85.7% / UUID 83.3% / HTMLFilter 78.6% / IdUtils 75.0% / Seq 72.7% / Md5Utils 63.6%)"
+      com.ruoyi.common.utils: "85.1% (12 个已加载类精确集合：Arith 100% / Base64 94.9% / SqlUtil 94.1% / DateUtils 91.4% / StringUtils 89.7% / UUID 88.0% / Seq 88.2% / IdUtils 80.0% / HTMLFilter 78.6% / EscapeUtil 63.0% / Md5Utils 63.6%)"
+
+  - name: coverage-visibility
+    priority: P1
+    status: active            # 已内置于 .github/workflows/ci.yml（Aggregate 步骤 + schedule）
+    wired_into_ci: true
+    verified: 2026-09-01
+    description: |
+      CI 聚合各模块 jacoco.csv，仅统计受门禁守护的类（精确镜像 pom includes，按模块归属），
+      生成 coverage-badge.svg（门禁守护范围真实覆盖率，当前 ~84%）并上传 artifact；
+      对 PR 自动发覆盖率评论。nightly 调度（cron 02:00 北京）重跑全部门禁，
+      捕获无推送期间的文档/约束漂移（熵管理兜底）。
+      关键：徽章数字与门禁同一口径，避免被未测试框架代码稀释而显示误导性的低值。
+    command: "（内置于 .github/workflows/ci.yml 的 Aggregate 步骤 + schedule，无需单独命令）"
+
+  - name: branch-protection
+    priority: P1
+    status: blocked_network  # 公司零信任代理临时中断，待网络恢复后 gh api 设置
+    wired_into_ci: true
+    description: |
+      对 main 分支设置 required_status_checks：Gate 1 / Gate 2 两道状态检查必须通过方可合入 PR。
+      不启用 "require PR before merging"，保留用户直推 main 的工作流；
+      故该保护主要约束 PR 合入路径，直推仍由 push 触发的 CI 门禁守护。
+    command: |
+      gh api -X PUT repos/lifelin1983/RuoYi-Vue-Dev/branches/main/protection \
+        --input prot.json   # required_status_checks: strict=true + contexts=[Gate 1, Gate 2]
