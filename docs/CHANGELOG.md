@@ -5,7 +5,26 @@
 
 ---
 
-## 2026-09-01 · v3.9.2-harness-p1c · 单条删除防护 + 依赖方向门禁 + pre-commit + Controller 测试
+## 2026-09-01 · v3.9.2-harness-p1d · common.utils 子集单测 + 覆盖率门禁扩面（后端口径）
+
+- **涉及模块**：新增 `ruoyi-common/src/test/...` 11 个测试类（86 用例）、`pom.xml`（JaCoCo 新增 `common.utils` BUNDLE 规则）、`enforcement.yml`、`CLAUDE.md`
+- **原功能**：
+  1. `com.ruoyi.common.utils` 整包（含 `Arith`/`StringUtils`/`DateUtils`/`SqlUtil`/`uuid`×3/`sign`×2/`html`×2 等高频工具）**零单测、零守护**，安全相关方法（`SqlUtil.escapeOrderBySql`/`filterKeyword`、`EscapeUtil`/`HTMLFilter` 的 XSS 处理、`Base64`/`Md5Utils` 编解码）改动无回归保护。
+  2. 覆盖率门禁 `coverage_targets` 里 `common.utils` 标注「尚无单测，待补后再纳入 includes」——核心工具游离在门禁之外。
+- **更新后功能**：
+  1. **新增 11 个纯静态工具单测**（86 用例，JUnit5+AssertJ，无 Spring 上下文）：`ArithTest`/`StringUtilsTest`/`DateUtilsTest`/`sql/SqlUtilTest`/`uuid/{IdUtils,UUID,Seq}Test`/`sign/{Base64,Md5Utils}Test`/`html/{EscapeUtil,HTMLFilter}Test`；重点覆盖安全方法——`escapeOrderBySql` 拦截 `order by updatexml` 注入、`filterKeyword` 拦截 `sleep` 关键字、HTML XSS 标签清洗、Base64/Md5 编解码往返正确。上下文/网络/文件依赖类（`SecurityUtils`/`ServletUtils`/`AddressUtils` 等）按约定不测。
+  2. **门禁扩面**：`pom.xml` 的 `jacoco:check` 新增 BUNDLE 规则 `com.ruoyi.common.utils.*` → LINE COVEREDRATIO ≥ **0.85**（实测基线 **85.1%**，棘轮只升不降）。
+  3. `enforcement.yml`：测试总数 68 → **154**（新增 ruoyi-common 86）；`coverage_targets` 加 `common.utils (bundle): 85`；`measured_baseline` 补 `common.utils: 85.1%`；`still_missing` 维持仅前端测试。
+- **变更原因**：① 把"核心工具零守护"补上；② 坚持棘轮——门禁下限直接取实测值，未来只升不降；③ 纯 Java、复用现有 harness，半天出成果、真实覆盖率提升最明显（按性价比优先做）。
+- **影响范围**：所有 `mvn verify`（含 CI）新增一道 `common.utils` 覆盖率校验；修改/新增 `com.ruoyi.common.utils` 下的类若无测试把该子集拉到 85% 以下，`verify` 直接 BUILD FAILURE。`ruoyi-common` 模块此前无 `src/test`，本次首次落地测试目录。
+- **验证 / 回归点**：
+  - ✅ 本地 `mvn -B -pl ruoyi-common test` → **86 用例全绿**（84 初验 + 2 修正：SqlUtil.filterKeyword 改用归一化后命中的 `sleep` 关键字、UUID.compareTo 改用低位 UUID 避开有符号 long 边界），生成 `ruoyi-common/target/site/jacoco/jacoco.csv`。
+  - ✅ 全量 `mvn -B clean verify` → BUILD SUCCESS（7 模块全过，haltOnFailure 下新门禁必然通过）。
+  - ✅ 单独 `mvn -B -pl ruoyi-common verify` 抓取：`Tests run: 86 ...` + `All coverage checks have been met` —— `common.utils` 新门禁在 ≥0.85 通过。
+  - ⚠️ Maven 启动器在 Git Bash 下报 `找不到主类 org.codehaus.plexus.classworlds.launcher.Launcher`（脚本 classpath 展开异常），实测改用 `java -cp <maven>/boot/plexus-classworlds-*.jar -Dmaven.home=... org.codehaus.plexus.classworlds.launcher.Launcher` 直调成功；日常也可用 `mvn.cmd`。
+  - ⚠️ `StringUtils` 722 行只覆盖 89.7%（非 100%），故该子集只能走 BUNDLE 级门槛，不能用 CLASS 级硬门槛。
+
+---
 
 - **涉及模块**：`SysProductServiceImpl.java`、新增 `SysProductControllerTest.java`、`ArchitectureRulesTest.java`（+4 规则）、新增 `scripts/git-hooks/pre-commit` + `scripts/setup-hooks.sh`、`pom.xml`（JaCoCo BUNDLE 收窄）、`CLAUDE.md`、`enforcement.yml`
 - **原功能**：

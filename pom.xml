@@ -362,6 +362,32 @@
                                         </limit>
                                     </limits>
                                 </rule>
+                                <!--
+                                  后端覆盖率扩面（Harness P1-扩面）：common.utils 纯静态工具子集。
+                                  仅纳已写单测的子包（Arith / StringUtils / DateUtils / sql.SqlUtil / uuid.* / sign.* / html.*），
+                                  其余 context/网络依赖类（SecurityUtils、ServletUtils、AddressUtils 等）仍排除，避免打红 CI。
+                                  实测基线（ruoyi-common/target/site/jacoco/jacoco.csv）：LINE 0.8506 / INSTR 0.8381。
+                                  棘轮：只升不降；日后补测更多 common.utils 类时上调 minimum。
+                                -->
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <includes>
+                                        <include>com.ruoyi.common.utils.Arith</include>
+                                        <include>com.ruoyi.common.utils.StringUtils</include>
+                                        <include>com.ruoyi.common.utils.DateUtils</include>
+                                        <include>com.ruoyi.common.utils.sql.SqlUtil</include>
+                                        <include>com.ruoyi.common.utils.uuid.*</include>
+                                        <include>com.ruoyi.common.utils.sign.*</include>
+                                        <include>com.ruoyi.common.utils.html.*</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.85</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
                             </rules>
                         </configuration>
                     </execution>

@@ -72,10 +72,11 @@ cd ruoyi-ui && npm run dev                           # 前端 :80
 架构约束由 ArchUnit 强制执行（模块边界、权限注解、命名、Mapper XML、**依赖方向**），
 违反即 `mvn test` 失败。规则清单见 docs/architecture/boundaries.md 第 5 节。
 
-覆盖率由 JaCoCo 在 `verify` 阶段强制执行（门禁只覆盖 `com.ruoyi.biz` 业务实现层与实体层，
-棘轮基线 service.impl 100% / domain ~50% / 整包 ~70%；`com.ruoyi.biz.controller` 属 Web 胶水层，
+覆盖率由 JaCoCo 在 `verify` 阶段强制执行（门禁覆盖 `com.ruoyi.biz` 业务实现层与实体层，
++ `com.ruoyi.common.utils` 纯静态工具子集；棘轮基线 service.impl 100% / biz.domain ~50% /
+biz 整包 ~70% / common.utils 子集 85.1%；`com.ruoyi.biz.controller` 属 Web 胶水层，
 不纳入门禁，由 SysProductControllerTest 等接口测试保证行为正确）。新增或修改
-`com.ruoyi.biz` 下的类必须同步补测试，否则 `mvn clean verify` 会因
+`com.ruoyi.biz` / `com.ruoyi.common.utils` 下的类必须同步补测试，否则 `mvn clean verify` 会因
 `jacoco:check` 规则 violated 而 BUILD FAILURE。规则见 `.harness/enforcement.yml`
 的 `coverage-gate`。
 
@@ -102,9 +103,9 @@ cd ruoyi-ui && npm run dev                           # 前端 :80
 ## 已知欠账
 
 - `sys_product` / `sys_student` 建表 SQL 未纳入 `sql/`，新环境初始化会失败
-- 树形删除不校验子节点，会产生孤儿数据（已用 2 个 `@Disabled` 用例固化缺陷，修复即验收）
-- Controller 接口测试与前端测试尚未覆盖（P1-5 / P2-4）
-- CI 门禁已接入（`.github/workflows/ci.yml`，含 JaCoCo 覆盖率门禁）；仅 pre-commit Hook 与 `dependency-direction` 约束扫描未落地（增强项，非阻塞）
+- 前端测试尚未覆盖（P2-4）；RuoYi 核心 `com.ruoyi.system.*` 仍无量级单测，未纳入覆盖率门禁
+- 已完成：树形删除子节点校验（P1-2）、单条删除同口径防护、依赖方向门禁、`dependency-direction`
+  扫描、pre-commit Hook、Controller 接口测试（P1-5）、`common.utils` 子集单测 + 覆盖率门禁（154 测试全绿）
 
 改动高风险区域（SecurityConfig、JWT 过滤器、生成器模板等）前，
 先查 docs/architecture/overview.md 第 8 节的风险清单。
