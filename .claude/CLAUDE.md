@@ -62,19 +62,26 @@ mvn clean verify -DfailIfNoTests=false               # 全量测试 + JaCoCo 覆
 # -am 会把 ruoyi-common 等模块拉进反应堆，而 -Dtest 对所有模块生效，
 # 无匹配用例的模块会报 "No tests were executed!" 直接失败（实测踩过）。
 mvn test -pl ruoyi-admin -am -Dtest=ArchitectureRulesTest,MapperXmlRulesTest -DfailIfNoTests=false
+mvn test -pl ruoyi-admin -am -Dtest=SysProductControllerTest -DfailIfNoTests=false   # Controller 接口测试 (P1-5)
 mvn test -pl ruoyi-system -am -Dtest='Sys*Test' -DfailIfNoTests=false
 mvn clean package -DskipTests -pl ruoyi-admin -am    # 后端打包
 cd ruoyi-ui && npm run dev                           # 前端 :80
+# 一次性启用本机 pre-commit 钩子（提交即拦文档漂移）：bash scripts/setup-hooks.sh
 ```
 
-架构约束由 ArchUnit 强制执行（模块边界、权限注解、命名、Mapper XML），
+架构约束由 ArchUnit 强制执行（模块边界、权限注解、命名、Mapper XML、**依赖方向**），
 违反即 `mvn test` 失败。规则清单见 docs/architecture/boundaries.md 第 5 节。
 
-覆盖率由 JaCoCo 在 `verify` 阶段强制执行（门禁只覆盖 `com.ruoyi.biz` 包，
-棘轮基线 service.impl 100% / domain ~50% / 整包 ~70%）。新增或修改
+覆盖率由 JaCoCo 在 `verify` 阶段强制执行（门禁只覆盖 `com.ruoyi.biz` 业务实现层与实体层，
+棘轮基线 service.impl 100% / domain ~50% / 整包 ~70%；`com.ruoyi.biz.controller` 属 Web 胶水层，
+不纳入门禁，由 SysProductControllerTest 等接口测试保证行为正确）。新增或修改
 `com.ruoyi.biz` 下的类必须同步补测试，否则 `mvn clean verify` 会因
 `jacoco:check` 规则 violated 而 BUILD FAILURE。规则见 `.harness/enforcement.yml`
 的 `coverage-gate`。
+
+本机 pre-commit 钩子（`scripts/git-hooks/pre-commit`，由 `scripts/setup-hooks.sh` 一次性启用）
+提交前先跑 `scripts/check-doc-links.sh --strict`，文档漂移即阻止提交；
+架构约束与覆盖率门禁仍在 CI 强制。`SKIP_DOC_CHECK=1 git commit` 可临时跳过文档校验。
 
 > Windows 下若 `mvn` 报 `找不到主类 org.codehaus.plexus.classworlds.launcher.Launcher`，
 > 是 Git Bash 的路径转换问题，改用 `mvn.cmd` 即可。

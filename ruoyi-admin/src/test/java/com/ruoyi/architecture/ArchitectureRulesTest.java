@@ -97,6 +97,58 @@ class ArchitectureRulesTest
             + "怎么修：在 IXxxService 中新增方法，Controller 改为调用 Service。" + DOC);
 
     /**
+     * 依赖方向（dependency-direction）：ruoyi-system 只能依赖 ruoyi-common（及同模块 com.ruoyi.biz），
+     * 不得反向依赖 framework / web / quartz / generator 等更高层模块。
+     */
+    @ArchTest
+    static final ArchRule systemModuleMustNotDependOnHigherLayers = noClasses()
+        .that().resideInAPackage("com.ruoyi.system..")
+        .should().dependOnClassesThat().resideInAnyPackage(
+            "com.ruoyi.framework..", "com.ruoyi.web..",
+            "com.ruoyi.quartz..", "com.ruoyi.generator..")
+        .because("依赖方向：com.ruoyi.system 是领域层，只允许依赖 com.ruoyi.common"
+            + "（与同模块 com.ruoyi.biz）。反向依赖 framework/web 会破坏分层、"
+            + "让领域层耦合表现层或框架层，模块将无法独立拆分。"
+            + "怎么修：把共用逻辑下沉到 com.ruoyi.common，或经接口解耦。" + DOC);
+
+    /**
+     * 依赖方向：ruoyi-quartz 只能依赖 ruoyi-common。
+     */
+    @ArchTest
+    static final ArchRule quartzModuleMustNotDependOnHigherLayers = noClasses()
+        .that().resideInAPackage("com.ruoyi.quartz..")
+        .should().dependOnClassesThat().resideInAnyPackage(
+            "com.ruoyi.system..", "com.ruoyi.framework..",
+            "com.ruoyi.web..", "com.ruoyi.generator..")
+        .because("依赖方向：com.ruoyi.quartz 只能依赖 com.ruoyi.common。"
+            + "怎么修：把共用逻辑下沉到 com.ruoyi.common。" + DOC);
+
+    /**
+     * 依赖方向：ruoyi-generator 只能依赖 ruoyi-common。
+     */
+    @ArchTest
+    static final ArchRule generatorModuleMustNotDependOnHigherLayers = noClasses()
+        .that().resideInAPackage("com.ruoyi.generator..")
+        .should().dependOnClassesThat().resideInAnyPackage(
+            "com.ruoyi.system..", "com.ruoyi.framework..",
+            "com.ruoyi.web..", "com.ruoyi.quartz..")
+        .because("依赖方向：com.ruoyi.generator 只能依赖 com.ruoyi.common。"
+            + "怎么修：把共用逻辑下沉到 com.ruoyi.common。" + DOC);
+
+    /**
+     * 依赖方向：ruoyi-framework 只能依赖 ruoyi-common 与 ruoyi-system，
+     * 不得依赖 web / quartz / generator 等更高层模块。
+     */
+    @ArchTest
+    static final ArchRule frameworkModuleMustNotDependOnHigherLayers = noClasses()
+        .that().resideInAPackage("com.ruoyi.framework..")
+        .should().dependOnClassesThat().resideInAnyPackage(
+            "com.ruoyi.web..", "com.ruoyi.quartz..", "com.ruoyi.generator..")
+        .because("依赖方向：com.ruoyi.framework 是框架层，只允许依赖 com.ruoyi.common"
+            + "与 com.ruoyi.system。反向依赖 web/quartz/generator 会让框架层耦合上层业务。"
+            + "怎么修：把依赖下沉到 com.ruoyi.common 或经接口解耦。" + DOC);
+
+    /**
      * 命名规范：业务 Service 接口必须以 I 开头
      */
     @ArchTest

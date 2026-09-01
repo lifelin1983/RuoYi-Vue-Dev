@@ -5,6 +5,31 @@
 
 ---
 
+## 2026-09-01 · v3.9.2-harness-p1c · 单条删除防护 + 依赖方向门禁 + pre-commit + Controller 测试
+
+- **涉及模块**：`SysProductServiceImpl.java`、新增 `SysProductControllerTest.java`、`ArchitectureRulesTest.java`（+4 规则）、新增 `scripts/git-hooks/pre-commit` + `scripts/setup-hooks.sh`、`pom.xml`（JaCoCo BUNDLE 收窄）、`CLAUDE.md`、`enforcement.yml`
+- **原功能**：
+  1. `deleteSysProductByProductId`（单条删除）直接透传 `delete ... where product_id=?`，**不校验子节点**，与已修复的批量删除口径不一致，仍会留孤儿数据。
+  2. 模块依赖方向只有约定与 `mvn dependency:tree` 人工核查，**无机器强制**；违反需靠 Code Review 肉眼发现。
+  3. 质量门禁只在 CI（push 后）才拦，本地提交（`git commit`）零拦截，犯错成本高。
+  4. Controller 层（P1-5）无接口测试，仅由 ArchUnit 校验 `@PreAuthorize` 注解，行为正确性未覆盖。
+- **更新后功能**：
+  1. **单条删除同口径防护**：`deleteSysProductByProductId` 删除前按 `parentId` 查子节点，命中即抛 `ServiceException("存在下级产品，不允许删除")`；补 2 个验收用例（有子节点抛异常 / 无子节点返回行数），`com.ruoyi.biz.service.impl` 维持 100% 行覆盖。
+  2. **依赖方向机器强制**：`ArchitectureRulesTest` 新增 4 条 `noClasses` 规则（system / quartz / generator / framework 各层禁止向上依赖 web/framework/quartz/generator），随 CI Gate 2a 自动执行；`enforcement.yml` 的 `dependency-direction` 由 `pending` 转 `active`/`wired_into_ci`。
+  3. **pre-commit 钩子**：`scripts/git-hooks/pre-commit` 提交前跑 `scripts/check-doc-links.sh --strict`，文档漂移即阻止提交；`scripts/setup-hooks.sh` 一次性 `git config core.hooksPath scripts/git-hooks` 启用。架构/覆盖率门禁仍在 CI 强制（保持提交秒级、离线可用、不依赖 Maven/网络）。
+  4. **Controller 接口测试（P1-5）**：新增 `SysProductControllerTest`（standalone MockMvc，6 用例覆盖 list/getInfo/add/edit/remove/export），不启 Spring 容器、不需 Redis；`@PreAuthorize` 鉴权由 ArchUnit 规则兜底，本测试只验请求映射与 `AjaxResult` 结构。
+  5. **JaCoCo BUNDLE 收窄**：门禁 `com.ruoyi.biz.*` → `com.ruoyi.biz.service.impl.*` + `com.ruoyi.biz.domain.*`，**排除 `com.ruoyi.biz.controller`**（Web 胶水层，由接口测试保证），避免 ruoyi-admin 中 0% 覆盖的 Controller 把整包 BUNDLE 拉到 0 打红 CI。
+- **变更原因**：补完 P1 收尾——单条删除与批量删除同源防护、依赖方向从"约定"变"门禁"、拦截从"CI 才拦"前移到"提交即拦"、Controller 行为正确性有测试兜底。
+- **影响范围**：`enforcement.yml` 测试总数 56 → 68（admin 15→25：架构 16 + Mapper 3 + Controller 6；system 41→43）；`still_missing` 移除 P1-5 与单条删除，仅剩前端测试。
+- **验证 / 回归点**：
+  - ✅ 本地 `mvn -B test -pl ruoyi-admin -am -Dtest=ArchitectureRulesTest,SysProductControllerTest` → 22 用例全绿（架构 16 + Controller 6，0 违规）。
+  - ✅ 全量 `mvn -B clean verify` → BUILD SUCCESS（JaCoCo `check` 门禁通过，BUNDLE 已收窄）。
+  - ✅ `bash scripts/check-doc-links.sh --strict` → PASS（38 项 0 error 0 warning）。
+  - ⚠️ 依赖方向规则的反向测试无法用临时源码类做（下层编译 classpath 看不到上层包，注入上层 import 会先在编译期报"程序包不存在"；注入上层模块依赖会被 Maven reactor 以循环依赖拒绝）——以全量扫描通过 + 与已验证 common 规则同构为验证依据（详见 `enforcement.yml`）。
+  - ⚠️ 启用钩子需一次性 `bash scripts/setup-hooks.sh`；CI 不受影响（钩子为本地可选）。
+
+---
+
 ## 2026-09-01 · v3.9.2-harness-p1b · 修复 P1-2 树形删除孤儿数据缺陷
 
 - **涉及模块**：`ruoyi-system/.../biz/service/impl/SysProductServiceImpl.java`、`ruoyi-system/.../resources/mapper/biz/SysProductMapper.xml`、两个测试类、`enforcement.yml`

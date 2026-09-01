@@ -100,6 +100,14 @@ public class SysProductServiceImpl implements ISysProductService
     @Override
     public int deleteSysProductByProductId(Long productId)
     {
+        // 单条删除同样校验子节点，避免孤儿数据（与批量删除口径一致，P1-2 同源修复）
+        SysProduct childQuery = new SysProduct();
+        childQuery.setParentId(productId);
+        List<SysProduct> children = sysProductMapper.selectSysProductList(childQuery);
+        if (children != null && !children.isEmpty())
+        {
+            throw new ServiceException("存在下级产品，不允许删除");
+        }
         return sysProductMapper.deleteSysProductByProductId(productId);
     }
 }

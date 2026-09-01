@@ -159,10 +159,10 @@ persistence:
 test_requirements:
   status: partially_met
   updated: 2026-09-01
-  total_tests: 56
+  total_tests: 68
   breakdown:
-    ruoyi-admin: 15      # 架构约束
-    ruoyi-system: 41     # 业务层（Service 18 + Mapper 23）
+    ruoyi-admin: 25      # 架构约束 16 (ArchUnit) + Mapper 3 + Controller 6
+    ruoyi-system: 43     # 业务层（Service 20 + Mapper 23）
   skipped: 0             # P1-2 两个 @Disabled 用例已于 2026-09-01 修复并启用
   coverage_targets:
     # 实测基线（ruoyi-system/target/site/jacoco/jacoco.csv），棘轮只升不降
@@ -185,10 +185,13 @@ test_requirements:
       issue: SysProductMapper.xml 的 where 不支持 parent_id 条件
       fix: "2026-09-01 · selectSysProductList 的 <where> 补充 <if test=\"parentId != null\"> and parent_id = #{parentId}</if>"
       status: passing
+    - id: P1-2-single
+      test: SysProductServiceImplTest.deleteSysProductByProductId_hasChildren_shouldThrowServiceException
+      issue: 单条删除未校验子节点（与批量删除同源缺陷，删除父节点仍会留孤儿数据）
+      fix: "2026-09-01 · deleteSysProductByProductId 同样先按 parentId 查子节点，存在即抛 ServiceException(\"存在下级产品，不允许删除\")"
+      status: passing
   still_missing:
-    - Controller 接口测试（P1-5）
     - 前端测试
-    - deleteSysProductByProductId（单个删除）同口径子节点防护（建议项，未做）
   note: |
     上游清单通常建议 80%+。本项目从 0 起步，已按
     docs/conventions/testing.md 的批次推进：架构测试 → Service → Mapper。
@@ -231,8 +234,22 @@ ci_jobs:
 
   - name: dependency-direction
     priority: P1
-    status: pending
-    command: mvn dependency:tree -Dincludes=com.ruoyi
+    status: active            # 已编码为 ArchitectureRulesTest 的 4 条 noClasses 依赖方向规则
+    wired_into_ci: true       # 随 Gate 2a (ArchitectureRulesTest) 自动执行
+    verified: 2026-09-01
+    command: mvn test -pl ruoyi-admin -am -Dtest=ArchitectureRulesTest -DfailIfNoTests=false
+    description: |
+      模块依赖方向（dependency-direction）：只允许自上而下依赖，禁止反向与成环。
+      4 条 ArchUnit 规则覆盖 common/system/quartz/generator/framework 各层的向上依赖禁忌，
+      错误信息含完整修复指引。mvn dependency:tree -Dincludes=com.ruoyi 作为人工补充核查手段保留。
+    negative_test: |
+      依赖方向规则无法用"临时源码类"做反向测试——因为分层在 Maven 模块图层面已隔离：
+      下层模块（如 ruoyi-system）的编译 classpath 根本看不到上层包（com.ruoyi.web/
+      framework/quartz/generator），所以注入一个上层 import 会先在编译期报"程序包不存在"，
+      而非被 ArchUnit 拦截（这正是分层生效的证据）。要制造真实违规必须给下层 pom 注入上层
+      模块依赖，而那会被 Maven reactor 以"循环依赖"直接拒绝构建——同样证明分层不可破坏。
+      因此本规则以"全量代码库扫描通过 + 与已验证的 commonModuleMustNotDependOnOtherModules
+      规则同构"作为验证依据，而非合成临时类。
 
   - name: coverage-gate
     priority: P1

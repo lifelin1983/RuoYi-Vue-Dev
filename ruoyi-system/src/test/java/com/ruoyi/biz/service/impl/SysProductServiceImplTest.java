@@ -221,4 +221,41 @@ class SysProductServiceImplTest
         assertThat(rows).isZero();
         verify(sysProductMapper).deleteSysProductByProductIds(empty);
     }
+
+    /**
+     * 验收用例（P1-2 同源）：单条删除父节点前也应校验子节点，存在则抛 ServiceException。
+     * 与批量删除 deleteSysProductByProductIds 保持同一口径，避免单条路径漏掉防护。
+     */
+    @Test
+    @DisplayName("单个删除 - 存在子节点时应抛 ServiceException（与批量删除同口径）")
+    void deleteSysProductByProductId_hasChildren_shouldThrowServiceException()
+    {
+        // given：父节点 100 下存在子节点
+        SysProduct child = buildProduct(101L, "冲压模");
+        child.setParentId(100L);
+        given(sysProductMapper.selectSysProductList(any(SysProduct.class)))
+            .willReturn(Collections.singletonList(child));
+
+        // when & then
+        assertThatThrownBy(() -> sysProductService.deleteSysProductByProductId(100L))
+            .isInstanceOf(ServiceException.class)
+            .hasMessageContaining("下级");
+    }
+
+    @Test
+    @DisplayName("单个删除 - 无子节点时返回影响行数（覆盖 else 分支，维持 100% 行覆盖）")
+    void deleteSysProductByProductId_noChildren_returnsRows()
+    {
+        // given
+        given(sysProductMapper.selectSysProductList(any(SysProduct.class)))
+            .willReturn(Collections.emptyList());
+        given(sysProductMapper.deleteSysProductByProductId(100L)).willReturn(1);
+
+        // when
+        int rows = sysProductService.deleteSysProductByProductId(100L);
+
+        // then
+        assertThat(rows).isEqualTo(1);
+        verify(sysProductMapper).deleteSysProductByProductId(100L);
+    }
 }

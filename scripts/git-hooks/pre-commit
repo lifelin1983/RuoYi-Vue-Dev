@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# pre-commit quality gate (Harness Engineering)
+#
+# 把"文档新鲜度"这第一道最便宜、收益最高的闸门，从「CI 才拦」升级为「提交即拦」。
+# 架构约束与覆盖率门禁仍在 CI 强制（.github/workflows/ci.yml），
+# 这里不跑它们，是为了保持本地提交秒级、离线可用、不依赖 Maven/网络。
+#
+# 启用（一次性）：bash scripts/setup-hooks.sh
+#   （等价于 git config core.hooksPath scripts/git-hooks）
+#
+# 跳过（不推荐）：SKIP_DOC_CHECK=1 git commit ...
+# 完全绕过本机钩子（含文档校验）：git commit --no-verify
+# ---------------------------------------------------------------------------
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+[ -z "$ROOT" ] && exit 0
+cd "$ROOT" || exit 1
+
+if [ "${SKIP_DOC_CHECK:-}" = "1" ]; then
+  echo "[pre-commit] SKIP_DOC_CHECK=1，跳过文档新鲜度校验。"
+  exit 0
+fi
+
+echo "[pre-commit] 文档新鲜度校验 (scripts/check-doc-links.sh --strict)..."
+if bash scripts/check-doc-links.sh --strict; then
+  echo "[pre-commit] 文档校验通过。"
+else
+  echo "[pre-commit] 文档校验失败 -> 提交已阻止。"
+  echo "            修复后重试；或 SKIP_DOC_CHECK=1 临时跳过（CI 仍会拦）；"
+  echo "            或 git commit --no-verify 完全绕过本机钩子（不推荐）。"
+  exit 1
+fi
