@@ -1,0 +1,73 @@
+# Harness 熵追踪台账（可演进为自动巡检）
+# ===========================================================================
+# 本文件是「债务 / 欠账数据」的唯一真相源；enforcement.yml 只保留门禁硬配置。
+# 原 enforcement.yml 的 still_missing / resolved_defects 两段已迁移至此，消除双源漂移。
+#
+# nightly-audit-debt job 会实跑每条 verifiable 项的 check，比对声明 status：
+#   - 声明 resolved/mitigated，但 check 证据已失效（如测试被误删/改名） → 漂移
+#     脚本将该项 status 改写为 drift 并写入 drift_note，随后 ci.yml 提交推送
+#   - 声明 open 且 verifiable:false（如前端测试不在本仓） → 仅告警，不自动改
+#
+# 演进路线（写在 schema 里，方便 nightly 逐步增强）：
+#   Level 0（当前）：结构化 + nightly 校验 verifiable 项 + 状态漂移自动回写
+#   Level 1：新增 check 类型（coverage_delta / new_untested_class）
+#   Level 2（未来）：PR 触发时若降低覆盖率 / 新增未测类，自动追加 DEBT 草稿 + 评论
+#
+# 字段说明：
+#   id          唯一标识（DEBT-xxx）
+#   kind        missing_test | tech_debt | defect | process
+#   title       人类可读描述
+#   priority    P0/P1/P2/P3
+#   status      open | mitigated | resolved | drift | wontfix
+#   verifiable  true=nightly 可自动校验；false=人工维护（如前端不在本仓）
+#   check       仅 verifiable:true 需要；type 见各 item
+#   drift_note  nightly 回写时自动填充，记录漂移原因
+# ===========================================================================
+schema_version: 1
+
+items:
+  # ---- 欠账（原 enforcement.yml 的 still_missing） ----
+  - id: DEBT-001
+    kind: missing_test
+    title: 前端测试（ruoyi-ui）
+    priority: P3
+    status: open
+    verifiable: false           # 前端代码不在本仓库，nightly 无法自动校验
+    rationale: 经用户决策暂缓，不计入缺口；前端不在本仓，无法自动验证
+    created: 2026-09-01
+    decided_by: linjun
+
+  # ---- 已修复缺陷（原 enforcement.yml 的 resolved_defects 迁移） ----
+  - id: DEBT-002
+    kind: defect
+    title: 删除父节点未校验子节点（批量删除产生孤儿数据）
+    priority: P1
+    status: resolved
+    verifiable: true
+    check:
+      type: test_exists         # Level 0：校验测试类+方法是否仍存在（防误删/改名导致假 resolved）
+      test: SysProductServiceImplTest.deleteSysProductByProductIds_hasChildren_shouldThrowServiceException
+    resolved_at: 2026-09-01
+    fix: deleteSysProductByProductIds 先按 parentId 查子节点，存在即抛 ServiceException；Mapper XML where 补 parent_id 条件
+
+  - id: DEBT-003
+    kind: defect
+    title: SysProductMapper.xml 的 where 不支持 parent_id 条件
+    priority: P1
+    status: resolved
+    verifiable: true
+    check:
+      type: test_exists
+      test: SysProductMapperTest.selectSysProductList_byParentId_shouldFilter
+    resolved_at: 2026-09-01
+
+  - id: DEBT-004
+    kind: defect
+    title: 单条删除未校验子节点（与批量同源）
+    priority: P1
+    status: resolved
+    verifiable: true
+    check:
+      type: test_exists
+      test: SysProductServiceImplTest.deleteSysProductByProductId_hasChildren_shouldThrowServiceException
+    resolved_at: 2026-09-01

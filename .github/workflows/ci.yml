@@ -251,3 +251,49 @@ jobs:
           git add .harness/enforcement.yml
           git commit -m "chore(harness): nightly 回写覆盖率基线 [skip ci]"
           git push origin HEAD:main
+
+  # ------------------------------------------------------------------
+  # Nightly — 自动巡检债务台账（熵管理：手动欠账 → 可自动校验）
+  # 仅 schedule 触发时运行。从源码实跑每条 verifiable 项的 check，
+  # 比对声明 status；若声明 resolved 但证据已失效（测试被误删/改名），
+  # 脚本将状态改写为 drift 并写入 drift_note，随后提交推送。
+  # 依赖：仅需 checkout 源码（check 读 src/test），无需构建产物。
+  # 权限前提：repo Settings > Actions > General > Workflow permissions = Read and write
+  # ------------------------------------------------------------------
+  nightly-audit-debt:
+    name: Nightly - audit harness debt ledger
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    permissions:
+      contents: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Audit debt ledger (rewrite on drift)
+        id: audit
+        run: |
+          python3 scripts/audit-harness-debt.py --rewrite
+          if [ -n "$(git diff -- .harness/harness-debt.yaml)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit & push if changed
+        if: steps.audit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .harness/harness-debt.yaml
+          git commit -m "chore(harness): nightly 巡检债务台账漂移 [skip ci]"
+          git push origin HEAD:main

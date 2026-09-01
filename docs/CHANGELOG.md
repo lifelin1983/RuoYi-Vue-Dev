@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-09-01 · v3.9.2-harness-p1g · 熵追踪台账结构化 + nightly 自动巡检（手动欠账 → 可演进自动巡检）
+
+- **涉及模块**：新增 `.harness/harness-debt.yaml`、`scripts/audit-harness-debt.py`；改动 `.github/workflows/ci.yml`、`.harness/enforcement.yml`
+- **原功能**：熵追踪（欠账 / 已修复缺陷）散落在 `enforcement.yml` 的 `still_missing`（自由文本 `- 前端测试`）、`resolved_defects`（3 条 `status: passing` 手填）与 `docs/CHANGELOG.md`（prose 手填）——**全靠人填、会滞后**，与之前"覆盖率基线漂移"同源的病。
+- **更新后功能**：
+  1. **新建结构化台账 `.harness/harness-debt.yaml`**：每条债务带 `id / kind / priority / status / verifiable / check`，成为「债务数据」唯一真相源；`enforcement.yml` 仅保留门禁硬配置，原 `still_missing` / `resolved_defects` 两段已迁移并改为 `debt_ledger:` 指针（消除双源漂移）。
+  2. **新增零依赖审计脚本 `scripts/audit-harness-debt.py`**（纯 stdlib，GitHub Actions 直接 `python3` 可跑，无需 `pip install`）：对 `verifiable:true` 项实跑 `check`（Level 0 支持 `test_exists`——校验测试类+方法是否仍存在于 `src/test` 源码），比对声明 `status`；**声明 resolved 但证据已失效（测试被误删/改名）→ 漂移**，脚本将该项改写为 `status: drift` 并写入 `drift_note`。
+  3. **`ci.yml` 新增 `nightly-audit-debt` job**（`if: schedule`，复用 checkout 源码，无需构建产物）：每天 02:00 跑审计，发现漂移则 `git commit`+`push`（commit message 带 `[skip ci]` 防递归）；**无漂移则不提交**；`permissions: contents: write`。
+  4. **演进路线写进台账注释**：Level 0 校验可验证项 → Level 1 加 `coverage_delta` / `new_untested_class` → Level 2（未来）PR 触发时若降低覆盖率 / 新增未测类，自动追加 DEBT 草稿 + 评论。
+- **变更原因**：把"人工填欠账/变更记录"升级为结构化、可被 nightly 自动校验的形态，从根上消除"声明与事实脱节"（与 nightly 回写覆盖率基线同一思路）。`verifiable:false` 项（如前端测试不在本仓）仅告警、不自动改，保持人工决策权。
+- **影响范围**：无门禁阈值变化，无构建变化。仅新增台账文件 + 巡检 job；`enforcement.yml` 删除两段手填债务、改为指针。
+- **验证 / 回归点**：
+  - ✅ 脚本本地实跑：4 项全 PASS、0 漂移、不改文件（exit 0）。
+  - ✅ **反向测试（证明非假绿）**：临时把 P1-2 测试方法改名 → 重跑 `--rewrite` → 精确检出 DEBT-002 漂移并改写为 `status: drift` + `drift_note`（exit 2），随后还原 `.java` 与台账复验 0 漂移（exit 0）。
+  - ⚠️ **上线前提**：同 nightly-sync-baseline，需仓库 `Settings → Actions → General → Workflow permissions = Read and write`，否则 push 被拒（非致命，当晚只是不回写）。
+  - **回归点**：今后新增债务走台账（不往 `enforcement.yml` / CHANGELOG 散填）；已修复缺陷若要纳入自动校验，须带 `verifiable:true` + `check.test`。
+
+---
+
 ## 2026-09-01 · v3.9.2-harness-p1f · 覆盖率基线漂移修正 + domain 门禁棘轮上调（40% → 55%）
 
 - **涉及模块**：`pom.xml`（`jacoco:check`）、`.harness/enforcement.yml`、`.claude/CLAUDE.md`、`Harness-Engineering-合规评估报告.html`

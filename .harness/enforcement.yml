@@ -180,24 +180,7 @@ test_requirements:
     #   com.ruoyi.system.*     → RuoYi 核心，仍无量级单测，待补后再纳入 includes
   rule: |
     新增或修改 com.ruoyi.biz 下的类，必须同步提供测试类，否则不予合入。
-  resolved_defects:
-    - id: P1-2
-      test: SysProductServiceImplTest.deleteSysProductByProductIds_hasChildren_shouldThrowServiceException
-      issue: 删除父节点未校验子节点，产生孤儿数据
-      fix: "2026-09-01 · deleteSysProductByProductIds 先按 parentId 查子节点，存在即抛 ServiceException(\"存在下级产品，不允许删除\")；Mapper XML where 补 parent_id 条件"
-      status: passing   # 用例已启用且全绿
-    - id: P1-2-prereq
-      test: SysProductMapperTest.selectSysProductList_byParentId_shouldFilter
-      issue: SysProductMapper.xml 的 where 不支持 parent_id 条件
-      fix: "2026-09-01 · selectSysProductList 的 <where> 补充 <if test=\"parentId != null\"> and parent_id = #{parentId}</if>"
-      status: passing
-    - id: P1-2-single
-      test: SysProductServiceImplTest.deleteSysProductByProductId_hasChildren_shouldThrowServiceException
-      issue: 单条删除未校验子节点（与批量删除同源缺陷，删除父节点仍会留孤儿数据）
-      fix: "2026-09-01 · deleteSysProductByProductId 同样先按 parentId 查子节点，存在即抛 ServiceException(\"存在下级产品，不允许删除\")"
-      status: passing
-  still_missing:
-    - 前端测试
+  debt_ledger: .harness/harness-debt.yaml   # 熵追踪台账（结构化，nightly-audit-debt 自动巡检）；原 resolved_defects / still_missing 已迁移至此，消除双源漂移
   note: |
     上游清单通常建议 80%+。本项目从 0 起步，已按
     docs/conventions/testing.md 的批次推进：架构测试 → Service → Mapper → common.utils。
