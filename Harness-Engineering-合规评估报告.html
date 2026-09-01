@@ -58,12 +58,12 @@
 
   <!-- ===== 本轮更新横幅 ===== -->
   <div style="background:#e7f7ee;border:1px solid #9fd8b8;border-radius:10px;padding:14px 18px;margin:0 0 16px">
-    <div style="font-size:14px;font-weight:600;color:#1a7a45;margin-bottom:6px">更新 2026-09-01（14:40）· 外环收口：nightly 周期巡检 + 门禁可见性 + 分支保护，全部落地并通电</div>
+    <div style="font-size:14px;font-weight:600;color:#1a7a45;margin-bottom:6px">更新 2026-09-01（16:54）· 第1项落地：required_status_checks 已启用（PR 路径 CI 真阻断）· nightly 周期巡检 + 门禁可见性 + 分支保护，全部落地并通电</div>
     <div style="font-size:13px;color:#2c6b47;line-height:1.7">
       <b>① P1 CI 增强已推送</b>（原「待推送」→ 已闭环，commit <code>8c9557b</code>）：<code>ci.yml</code> 的 Aggregate 步骤聚合各模块 <code>jacoco.csv</code>，<b>仅统计受门禁守护的类</b>，生成 <code>coverage-badge.svg</code> 并对 PR 自动发覆盖率评论；<code>on.schedule</code>（<code>cron '0 18 * * *'</code> = 北京 02:00）重跑全部门禁——<b>此前报告标注的唯一「周期性巡检」缺口已补上</b>。<br>
-      <b>② 分支保护已落地</b>（commit <code>86492c4</code>）：私有免费仓库的 classic 保护 API 返回 403，用户选择<b>将仓库设为 PUBLIC</b> 后放行。实测 <code>allow_force_pushes=false</code> + <code>allow_deletions=false</code>（历史不可篡改/不可误删），<code>enforce_admins=false</code>。<br>
+      <b>② 分支保护已落地</b>（commit <code>86492c4</code> 设防改写/误删；<code>16d6b8d</code> 启用 <code>required_status_checks</code>）：私有免费仓库的 classic 保护 API 返回 403，用户选择<b>将仓库设为 PUBLIC</b> 后放行。实测 <code>allow_force_pushes=false</code> + <code>allow_deletions=false</code>（历史不可篡改/不可误删），<code>enforce_admins=false</code>；<b>2026-09-01 16:25 启用 <code>required_status_checks</code>（strict=false，contexts=[Gate 2 - architecture and tests, Gate 1 - knowledge freshness]）</b>——PR 合入须两 Gate 通过，直推 main 仍不受其约束。<br>
       <b>③ 门禁真实生效（本次实测）</b>：从本地 <code>jacoco.csv</code> 逐条实算四道门禁——<code>biz.service.impl 100.00%</code>（门槛 100%）、<code>biz.domain 66.67%</code>（门槛 40%）、<code>biz bundle 78.08%</code>（门槛 60%）、<code>common.utils 子集 85.06%</code>（门槛 85%）<b>全部 PASS</b>；徽章口径守护范围合计 <b>84.50%</b>。测试注解计数 <b>154</b>，与声明一致。<br>
-      <b>④ 诚实修正</b>：本报告此前称 CI「把本地强制变为<b>不可合入</b>的强制」——<b>该表述过度声称，本次下调修正</b>。实测分支保护<b>未启用</b> <code>required_status_checks</code>（为保留直推 main 工作流而刻意放弃），故 PR 合并与直推均<b>不被 CI 阻断</b>，CI 属<b>事后检测+报告型</b>。详见第一节记分卡。<br>
+      <b>④ 分路径修正</b>：本报告此前称 CI「把本地强制变为<b>不可合入</b>的强制」——该表述<b>对 PR 路径已不成立</b>。2026-09-01 16:25 已启用 <code>required_status_checks</code>，<b>PR 合入现被 CI 真正阻断</b>（须 Gate 1 + Gate 2 全绿）；但 <b>直推 main 仍不受约束</b>（GitHub 的 <code>required_status_checks</code> 只约束 PR 合入，普通 push 不拦，push 时 GitHub 返回 <code>Bypassed rule violations</code> 即绕过后照常成功）。CI 门禁现状为<b>分路径</b>：PR 路径=阻断型，直推路径=事后检测+报告型。详见第一节记分卡。<br>
       <span style="color:#b3412a">⚠️ 本轮新发现缺口</span>：<code>enforcement.yml</code> 声明的 <code>biz.domain</code> 基线「~50%（SysProduct 47% / SysStudent 60%）」<b>已漂移</b>——实测 58.8% / 71.0% / 66.67%。门禁仍通过（门槛 40%），但<b>基准声明失真</b>。→ <b>已于同日 15:30 修正完毕</b>（见下条）。
     </div>
   </div>
@@ -104,7 +104,7 @@
     <div>
       <div style="font-size:15px;font-weight:600">总体结论：已达 <b>生产级 Harness</b>，三支柱闭环 + 周期巡检 + 历史防篡改全部就位；剩余项均为<b>主动取舍</b>或<b>轻量维护</b></div>
       <div class="note">本轮把上一版标注的两项缺口之一（周期性巡检）补齐：<code>nightly</code> 调度已上线，熵管理从「仅 push 触发」升级为「主动周期巡检」。分支保护落地后，历史<underline>不可被 force-push 改写、分支不可被误删</underline>。四道覆盖率门禁经本地 <code>jacoco.csv</code> 实算全部 PASS（154 测试）。<b>评级由 A- 上调至 A。</b><br>
-      仍存在三项，但性质不同：<b>(1) CI 属报告型而非阻断型</b>——为保留直推 main 工作流刻意不启用 <code>required_status_checks</code>（本轮修正了此前对该点的过度声称）；<b>(2) 前端测试</b>——经用户决策暂缓，不计入缺口；<b>(3) 覆盖率基线声明漂移</b>——本轮新发现，属可快速修复的维护项。</div>
+      仍存在两项，但性质不同：<b>(1) CI 门禁为分路径</b>——PR 合入路径已启用 <code>required_status_checks</code>（CI 真阻断，须 Gate 1+Gate 2 绿），但直推 main 路径仍属<b>事后检测+报告型</b>（为保留直推工作流刻意不强制）；<b>(2) 前端测试</b>——经用户决策暂缓，不计入缺口。覆盖率基线声明漂移已于本轮第2项（nightly 自动回写）修复。</div>
     </div>
   </div>
 
@@ -120,7 +120,7 @@
     <b>③ 熵管理 74 → <span class="ok">91</span>（本轮最大跃升）</b>：此前唯一的实质缺口「周期性（scheduled）巡检」已由 <code>on.schedule</code>（北京 02:00 nightly）补齐，熵管理从被动（push 触发）转为主动（周期巡检）；叠加覆盖率趋势可见性（徽章 + PR 评论），漂移可被观测；<b>15:30 又把实测发现的基线声明漂移（声明 ~50% / 实测 66.67%）同步修正，并把 <code>domain</code> 门槛由 0.40 棘轮上调至 0.55</b>，故由 88 再升至 91。剩余扣分：<code>field-sync</code> 仍为 <code>manual_review</code>，且基线仍靠人工维护（根治需 nightly 回写）。<br>
     <b>② 架构约束 92 → 93</b>：分支保护 <code>allow_force_pushes=false</code> 使「约束不可通过改写历史绕过」，架构约束的持久性获得仓库层保障。<br>
     <b>核心心法 94 → 95</b>：棘轮经实算验证（四道门禁全绿、只升不降）；且本轮回退操作自觉采用 <code>git revert</code> 而非强推，体现「约束优先于便利」的纪律。<br>
-    <b>质量门禁 92 → 90（下调，非退步，是修正过度声称）</b>：此前报告称 CI 已实现「不可合入的强制」，本轮实测发现分支保护<b>未启用</b> <code>required_status_checks</code>，因此 PR 合并与直推<b>均不被 CI 阻断</b>——CI 的真实定位是<b>事后检测 + 报告</b>。同时分支保护（防重写/防误删）带来加分。二者相抵后诚实评定为 90，并标注为<b>主动取舍</b>而非缺陷。</p>
+    <b>质量门禁 92 → 90（下调，非退步，是修正过度声称）</b>：此前报告称 CI 已实现「不可合入的强制」，实测发现<b>直推路径</b>分支保护未对 push 强制——<code>required_status_checks</code> 仅约束 PR 合入。2026-09-01 16:25 已启用该约束，<b>PR 路径现为真阻断</b>；但<b>直推 main 仍不受 CI 约束</b>，CI 在该路径定位为<b>事后检测 + 报告</b>。评分维持 90：因"不可合入强制"仅在 PR 路径成立，直推路径未强制（用户主动保留习惯）。分支保护（防重写/防误删）带来加分相抵后诚实评定，标注为<b>主动取舍</b>而非缺陷。</p>
   </div>
 
   <!-- 合规记分卡 -->
@@ -158,7 +158,7 @@
         <td>—</td></tr>
       <tr><td><b>约束不可被历史改写绕过</b>　<span class="badge b-ok">新增</span></td><td><span class="badge b-ok">符合</span></td>
         <td><b>本轮实测</b> <code>gh api .../branches/main/protection</code> → <code>allow_force_pushes=false</code>、<code>allow_deletions=false</code>；历史不可篡改、分支不可误删</td>
-        <td>未启用 <code>required_status_checks</code>（主动取舍，见下）</td></tr>
+        <td>已启用 <code>required_status_checks</code>（strict=false，Gate 1+Gate 2）；PR 合入须两 Gate 通过。<b>直推 main 不受约束</b>（主动保留直推习惯）</td></tr>
       <tr><td>覆盖率门禁覆盖核心工具</td><td><span class="badge b-ok">符合</span></td>
         <td><b>本轮实算</b>（本地 <code>jacoco.csv</code>）：<code>common.utils</code> 子集 <b>85.06%</b>（门槛 85%，12 类）→ PASS；<code>service.impl 100.00%</code> → PASS</td>
         <td>—</td></tr>
@@ -210,9 +210,9 @@
       <tr><td>Pre-commit 本地拦截</td><td><span class="badge b-ok">符合</span></td>
         <td><code>scripts/git-hooks/pre-commit</code> 提交前跑文档校验，漂移即阻止提交（真正的本地阻断）</td>
         <td>—</td></tr>
-      <tr><td><b>CI 阻断合入</b>（不可合入的强制）</td><td><span class="badge b-part">部分</span></td>
-        <td><b>本轮实测</b>：分支保护<b>未启用</b> <code>required_status_checks</code> / <code>required_pull_request_reviews</code>，故 PR 合并与直推 main <b>均不被 CI 阻断</b>——CI 为事后报告型</td>
-        <td><b>主动取舍</b>：为保留直推 main 工作流。若要真正"不可合入"，需启用 <code>required_status_checks</code>（代价：直推被阻断，须走 PR）</td></tr>
+      <tr><td><b>CI 阻断合入</b>（不可合入的强制）</td><td><span class="badge b-part">分路径</span></td>
+        <td><b>本轮实测（2026-09-01 16:25）</b>：已启用 <code>required_status_checks</code>（strict=false，Gate 1+Gate 2）。<b>PR 合入被 CI 真阻断</b>（须两 Gate 绿）；<b>直推 main 不受约束</b>——<code>required_status_checks</code> 仅约束 PR 合入，push 时 GitHub 返回 <code>Bypassed rule violations</code> 即绕过成功</td>
+        <td><b>分路径取舍</b>：PR 路径已达成"不可合入强制"；直推路径为保留习惯未强制（仍属事后报告型）。若要彻底禁直推须改用 <code>restrictions</code>（限制可 push 人员），会推翻直推习惯，待定</td></tr>
       <tr><td>前端测试（P2-4）</td><td><span class="badge b-part">暂缓</span></td>
         <td><code>enforcement.yml</code> 的 <code>still_missing</code> 仅此一项</td>
         <td>经用户决策「前端测试暂时不考虑」，<b>不计入缺口</b></td></tr>
@@ -262,7 +262,7 @@
     <table>
       <thead><tr><th style="width:34%">核验项</th><th style="width:12%">结果</th><th>实测数据</th></tr></thead>
       <tbody>
-        <tr><td>分支保护配置</td><td><span class="ok">确认</span></td><td><code>gh api .../branches/main/protection</code> → <code>allow_force_pushes:false</code>、<code>allow_deletions:false</code>、<code>enforce_admins:false</code>；<b>无</b> <code>required_status_checks</code>、<b>无</b> <code>required_pull_request_reviews</code></td></tr>
+        <tr><td>分支保护配置</td><td><span class="ok">确认</span></td><td><code>gh api .../branches/main/protection</code> → <code>allow_force_pushes:false</code>、<code>allow_deletions:false</code>、<code>enforce_admins:false</code>；<b>已启用</b> <code>required_status_checks</code>（strict=false，contexts=[Gate 2 - architecture and tests, Gate 1 - knowledge freshness]）。直推 push 时 GitHub 返回 <code>Bypassed rule violations</code>（绕过成功，不被拦截）</td></tr>
         <tr><td>仓库可见性</td><td><span class="ok">确认</span></td><td><code>gh repo view --json visibility</code> → <code>PUBLIC / isPrivate:false</code>（为解锁保护 API 而公开，公开前已做密钥扫描，命中仅在 <code>node_modules/</code> 且已被 <code>.gitignore</code> 排除）</td></tr>
         <tr><td>文档新鲜度</td><td><span class="ok">PASS</span></td><td><code>bash scripts/check-doc-links.sh --strict</code> → <b>checks 38 / errors 0 / warnings 0</b></td></tr>
         <tr><td>周期巡检是否上线</td><td><span class="ok">确认</span></td><td><code>ci.yml</code> 含 <code>on.schedule</code> + <code>cron '0 18 * * *'</code>（北京 02:00）与 Aggregate 步骤（L99）</td></tr>
@@ -284,7 +284,7 @@
     <tbody>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td><b>同步覆盖率基线 + 门槛棘轮上调</b>：4 处声明改为实测值；<code>domain</code> 门槛 <b>0.40 → 0.55</b>（<b>非</b>原计划的 0.60，因 CLASS 级规则受最弱类 SysProduct 58.82% 约束）</td><td>熵管理 / 基线漂移</td><td><b>2026-09-01 15:30 已完成</b>并经反向测试双向验证；恢复"声明=实际"，棘轮精度恢复</td></tr>
       <tr><td><span class="badge b-part">建议 P2</span></td><td><b>基线回写自动化</b>：让 nightly 任务把实测覆盖率回写 <code>enforcement.yml</code>（或产出 diff 提醒），而非人工声明</td><td>熵管理 / 防漂移</td><td>从根上消除"人工声明滞后"，是熵管理的正解</td></tr>
-      <tr><td><span class="badge b-part">权衡项</span></td><td><b>是否启用 <code>required_status_checks</code></b>（Gate1/Gate2）</td><td>质量门禁 / 不可合入</td><td>启用后 CI 真正阻断合入，达成范式要求的"不可合入强制"；<b>代价</b>：直推 main 被阻断，须改走 PR。属工作流取舍，由老大定</td></tr>
+      <tr><td><span class="badge b-ok">P1 ✅</span></td><td><b>启用 <code>required_status_checks</code></b>（Gate1/Gate2）</td><td>质量门禁 / 不可合入</td><td><b>本轮已完成</b>（2026-09-01 16:25，commit 16d6b8d）：PR 路径 CI 真阻断（须 Gate1+Gate2 绿）；直推路径仍报告型（GitHub 不拦直推）。若要彻底禁直推须改用 <code>restrictions</code>（待定）</td></tr>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td>周期性巡检（nightly）已落地</td><td>熵管理 / 周期巡检</td><td><b>本轮已完成</b>：<code>ci.yml</code> <code>on.schedule</code> 北京 02:00 重跑全部门禁，补上此前唯一实质缺口</td></tr>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td>门禁可见性（覆盖率趋势 + PR 评论）</td><td>Verify / 可观测</td><td><b>本轮已完成</b>：Aggregate 生成 <code>coverage-badge.svg</code>（84.50%），口径与门禁严格一致</td></tr>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td>分支保护（防 force-push / 防误删）</td><td>架构约束 / 持久性</td><td><b>本轮已完成</b>：仓库转 PUBLIC 解锁 API 后设置，历史不可篡改</td></tr>
@@ -298,7 +298,7 @@
   <p class="foot">
     评估方法：以 Harness Engineering 三大支柱 + 核心心法为基准，逐条对照 <code>.claude/CLAUDE.md</code>、<code>docs/</code> 与 <code>.harness/enforcement.yml</code>；<b>本轮所有关键结论均通过实际执行命令、查询 GitHub API、解析 <code>jacoco.csv</code> 得出，而非采信文档自述</b>。<br>
     结论：本仓库已达成<b>生产级 Harness</b>——规则有溯源、约束机器可执行、缺陷固化为验收用例、四道覆盖率门禁实算全绿（154 测试）、周期巡检已上线、历史防篡改已就位。评级由 <b>A- 上调至 A</b>。<br>
-    三项待决：<b>(1) 覆盖率基线声明漂移</b>（新发现，建议尽快同步并按棘轮上调门槛）；<b>(2) CI 为报告型而非阻断型</b>（主动取舍，启用 <code>required_status_checks</code> 可升级为不可合入，但须改走 PR）；<b>(3) 前端测试</b>（已决策暂缓）。前两项解决后即迈向<b>全自动 Harness</b>。
+    两项待决：<b>(1) CI 门禁分路径</b>——PR 路径已阻断（<code>required_status_checks</code> 生效），直推路径仍报告型；若要彻底禁直推须改用 <code>restrictions</code>（待定）；<b>(2) 前端测试</b>（已决策暂缓）。覆盖率基线漂移已于第2项（nightly 自动回写）修复。迈向<b>全自动 Harness</b> 的最后一步即"是否彻底禁直推"。
   </p>
 
 </div>
