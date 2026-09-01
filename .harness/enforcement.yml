@@ -312,12 +312,15 @@ ci_jobs:
 
   - name: branch-protection
     priority: P1
-    status: blocked_network  # 公司零信任代理临时中断，待网络恢复后 gh api 设置
+    status: blocked_plan     # 私有免费仓库无 classic 分支保护 API：gh api 返回 403 (Upgrade to GitHub Pro)，需升级 Pro 或公开仓库
     wired_into_ci: true
     description: |
       对 main 分支设置 required_status_checks：Gate 1 / Gate 2 两道状态检查必须通过方可合入 PR。
       不启用 "require PR before merging"，保留用户直推 main 的工作流；
       故该保护主要约束 PR 合入路径，直推仍由 push 触发的 CI 门禁守护。
+      现状(2026-09-01)：网络恢复后实测 gh api 返回 403 —— 私有免费仓库不开放 classic 分支保护，
+      需升级 GitHub Pro 或把仓库改为 public 才能启用。替代：JaCoCo check 已在 CI 内实现构建失败闸门。
     command: |
       gh api -X PUT repos/lifelin1983/RuoYi-Vue-Dev/branches/main/protection \
         --input prot.json   # required_status_checks: strict=true + contexts=[Gate 1, Gate 2]
+                            # 注：当前账户计划下该 API 返回 403，需先升级 Pro / 公开仓库
