@@ -302,10 +302,12 @@
                     </execution>
                     <!--
                       覆盖率门禁（Harness P1）：棘轮效应，只升不降。
-                      基线来自实测（ruoyi-system/target/site/jacoco/jacoco.csv）：
+                      基线来自实测（ruoyi-system/target/site/jacoco/jacoco.csv，2026-09-01 复核）：
                         com.ruoyi.biz.service.impl  → 100% (SysProduct/SysStudent)
-                        com.ruoyi.biz.domain        → ~50% (SysProduct 47% / SysStudent 60%)
-                        BUNDLE(service.impl+domain) → ~70%
+                        com.ruoyi.biz.domain        → 整包 66.67%；逐类 SysProduct 58.8% / SysStudent 71.0%
+                        BUNDLE(service.impl+domain) → 78.08%
+                      注意：domain 是 CLASS 级规则（每个类单独卡），门槛受最弱类 SysProduct(58.8%)
+                      约束 —— 设 ≥0.59 会立即打红构建，故棘轮上调至 0.55 而非 0.60。
                       范围只覆盖老大自己写的 com.ruoyi.biz 包——
                       RuoYi 核心 (com.ruoyi.system.*) 与 common.utils 暂无量级单测，
                       不纳入门禁，避免把当前全绿的 CI 打红；待补单测后扩大 includes。
@@ -340,7 +342,10 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.40</minimum>
+                                            <!-- 棘轮上调 0.40 → 0.55（2026-09-01）：实测逐类 SysProduct 58.8% /
+                                                 SysStudent 71.0%，整包 66.67%。因是 CLASS 级规则，门槛受最弱类
+                                                 SysProduct 约束，不可设 ≥0.59，留 ~3.8pp 余量。 -->
+                                            <minimum>0.55</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

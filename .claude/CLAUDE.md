@@ -74,8 +74,9 @@ cd ruoyi-ui && npm run dev                           # 前端 :80
 
 覆盖率由 JaCoCo 在 `verify` 阶段强制执行（门禁覆盖 `com.ruoyi.biz` 业务实现层与实体层，
 + `com.ruoyi.common.utils` 纯静态工具**精确列举**子集——Arith/StringUtils/DateUtils/SqlUtil
-+ uuid/sign/html 三个子包，非粗粒度前缀；棘轮基线 service.impl 100% / biz.domain ~50% /
-biz 整包 ~70% / common.utils 子集 85.1%；`com.ruoyi.biz.controller` 属 Web 胶水层，
++ uuid/sign/html 三个子包，非粗粒度前缀；棘轮基线（2026-09-01 实算同步）
+service.impl 100% / biz.domain 门槛 55%（整包实测 66.67%，逐类 SysProduct 58.8% /
+SysStudent 71.0%）/ biz 整包 78.08% / common.utils 子集 85.06%；`com.ruoyi.biz.controller` 属 Web 胶水层，
 不纳入门禁，由 SysProductControllerTest 等接口测试保证行为正确）。新增或修改
 `com.ruoyi.biz` / `com.ruoyi.common.utils` 下的类必须同步补测试，否则 `mvn clean verify` 会因
 `jacoco:check` 规则 violated 而 BUILD FAILURE。规则见 `.harness/enforcement.yml`

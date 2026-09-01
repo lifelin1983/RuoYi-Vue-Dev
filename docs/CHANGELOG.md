@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-09-01 · v3.9.2-harness-p1f · 覆盖率基线漂移修正 + domain 门禁棘轮上调（40% → 55%）
+
+- **涉及模块**：`pom.xml`（`jacoco:check`）、`.harness/enforcement.yml`、`.claude/CLAUDE.md`、`Harness-Engineering-合规评估报告.html`
+- **原功能**：
+  1. `enforcement.yml` / `pom.xml` 声明的 `com.ruoyi.biz.domain` 基线为「~50%（SysProduct 47% / SysStudent 60%）」、`biz` 整包「~70%」——**实际早已漂移**（实测：domain 整包 66.67%、逐类 58.82% / 70.97%；biz 整包 78.08%）。
+  2. `domain` 门禁门槛停留在 **0.40**，相对最弱类实测（58.82%）闲置 18.8pp，棘轮精度受损。
+- **更新后功能**：
+  1. **基线同步为实测值**：`enforcement.yml` 的 `coverage_targets`、`coverage-gate.rules`、`measured_baseline`，以及 `pom.xml` 注释、`CLAUDE.md` 覆盖率段落，全部改为 `jacoco.csv` 实算值。
+  2. **domain 门槛按棘轮上调 0.40 → 0.55**（`pom.xml` `<minimum>` 与 `enforcement.yml` `line_coveredratio_min` 同步）。
+- **变更原因**：2026-09-01 合规评估从 `jacoco.csv` 实算发现声明值保守失真、门禁门槛被白白闲置；同步后恢复"声明 = 实际"并让棘轮真正卡住退化。
+- **影响范围**：仅门禁阈值与文档声明。`com.ruoyi.common.utils`（0.85）、`com.ruoyi.biz.service.impl`（1.00）、`com.ruoyi.biz` BUNDLE（0.60）阈值**均未改动**。
+- **验证 / 回归点**：
+  - ⚠️ **关键约束（纠正原计划）**：`domain` 是 **CLASS 级**规则（逐类卡），门槛受最弱类 `SysProduct`（58.82%，10/17 行）约束——**设 ≥0.59 会立即打红构建**。原评估建议的 0.60 不可行，改为 **0.55**，给最弱类留约 3.8pp 余量。
+  - ✅ `mvn -B clean verify` 实跑：**BUILD SUCCESS**（7 模块全过，154 测试，`All coverage checks have been met`）。
+  - ✅ **反向测试（证明非假绿）**：把门槛临时顶到 `0.70` 后 `mvn -B verify -pl ruoyi-system -am` → **BUILD FAILURE**，JaCoCo 精确报 `Rule violated for class com.ruoyi.biz.domain.SysProduct: lines covered ratio is 0.58, but expected minimum is 0.70`；随后还原为 `0.55` 并复验通过。
+  - **回归点**：后续新增/修改 `com.ruoyi.biz.domain` 下实体时，需保证**每个类** LINE 覆盖率 ≥55%；整包仍需 ≥60%（BUNDLE 规则未变）。
+
+---
+
 ## 2026-09-01 · v3.9.2-harness-p1e · CI 增强（覆盖率趋势 + nightly 巡检 + 门禁可见性）
 
 - **涉及模块**：`.github/workflows/ci.yml`、`enforcement.yml`、`CLAUDE.md`（待提交；当前公司零信任代理中断，推送与分支保护设置待网络恢复）

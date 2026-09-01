@@ -168,8 +168,12 @@ test_requirements:
   coverage_targets:
     # 实测基线（ruoyi-system/target/site/jacoco/jacoco.csv），棘轮只升不降
     "com.ruoyi.biz.service.impl": 100   # 实测 100%（SysProduct/SysStudent），硬门槛
-    "com.ruoyi.biz.domain": 40          # 实测 ~50%（SysProduct 47% / SysStudent 60%）
-    "com.ruoyi.biz (bundle)": 60        # 实测 ~70%，整体下限
+    # 2026-09-01 同步：原声明「实测 ~50%（SysProduct 47% / SysStudent 60%）」已漂移，
+    # 实测整包 66.67%、逐类 SysProduct 58.8% / SysStudent 71.0%。
+    # 门槛按棘轮 40 → 55；因是 CLASS 级规则（逐类卡），受最弱类 SysProduct(58.8%) 约束，
+    # 设 ≥59 会立即打红构建，故取 55 留约 3.8pp 余量。
+    "com.ruoyi.biz.domain": 55
+    "com.ruoyi.biz (bundle)": 60        # 实测 78.08%（原声明 ~70% 已漂移），整体下限
     "com.ruoyi.common.utils (bundle)": 85   # 实测 85.1%（12 个已加载类精确集合，与 pom includes 严格一致），棘轮下限
     # 暂不在门禁内（无字节码可插桩 / 无实测单测）：
     #   com.ruoyi.biz.mapper   → MyBatis 动态代理，JaCoCo 无法测量（靠 Mapper 测试存在性兜底）
@@ -198,9 +202,11 @@ test_requirements:
     上游清单通常建议 80%+。本项目从 0 起步，已按
     docs/conventions/testing.md 的批次推进：架构测试 → Service → Mapper → common.utils。
     JaCoCo 覆盖率门禁已接入（pom.xml jacoco-maven-plugin check + ci.yml Gate 2b），
-    实测基线：com.ruoyi.biz.service.impl 100% / biz.domain ~50% / biz 整包 ~70% /
-    common.utils 子集 85.1%。
+    实测基线：com.ruoyi.biz.service.impl 100% / biz.domain 整包 66.67%（逐类 58.8% / 71.0%）/
+    biz 整包 78.08% / common.utils 子集 85.06%。
     RuoYi 核心 (com.ruoyi.system.*) 仍无量级单测，未纳入门禁以免打红 CI；common.utils 子集已纳入。
+    注：基线曾长期停留在旧值（domain ~50% / 整包 ~70%），2026-09-01 经 jacoco.csv 实算发现漂移后同步。
+    教训：人工维护的基线声明必然滞后，根治方案是让 nightly 回写基线（见 coverage-visibility 的改进方向）。
 
 # CI 集成建议（按性价比排序，可渐进接入）
 ci_jobs:
@@ -270,7 +276,8 @@ ci_jobs:
         line_coveredratio_min: 1.00     # 业务实现类必须 100% 覆盖
       - element: CLASS
         includes: ["com.ruoyi.biz.domain.*"]
-        line_coveredratio_min: 0.40     # 实体类下限
+        line_coveredratio_min: 0.55     # 实体类下限（2026-09-01 由 0.40 棘轮上调；
+                                        #  CLASS 级逐类卡，受最弱类 SysProduct 58.8% 约束，勿设 ≥0.59）
       - element: BUNDLE
         includes: ["com.ruoyi.biz.*"]
         line_coveredratio_min: 0.60     # 整包下限
@@ -293,8 +300,8 @@ ci_jobs:
       临时改动已还原。
     measured_baseline:
       com.ruoyi.biz.service.impl: "100% (SysProduct/SysStudent)"
-      com.ruoyi.biz.domain: "~50% (SysProduct 47% / SysStudent 60%)"
-      com.ruoyi.biz_bundle: "~70%"
+      com.ruoyi.biz.domain: "整包 66.67%；逐类 SysProduct 58.82% (10/17 行) / SysStudent 70.97% (22/31 行)"
+      com.ruoyi.biz_bundle: "78.08% (57/73 行)"
       com.ruoyi.common.utils: "85.1% (12 个已加载类精确集合：Arith 100% / Base64 94.9% / SqlUtil 94.1% / DateUtils 91.4% / StringUtils 89.7% / UUID 88.0% / Seq 88.2% / IdUtils 80.0% / HTMLFilter 78.6% / EscapeUtil 63.0% / Md5Utils 63.6%)"
 
   - name: coverage-visibility
