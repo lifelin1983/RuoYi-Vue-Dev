@@ -253,6 +253,56 @@ jobs:
           git push origin HEAD:main
 
   # ------------------------------------------------------------------
+  # PR 债务护栏（Level 2：熵管理巡检主线 L0→L1→L2）
+  # 仅 pull_request 触发。复用 build-and-test 上传的 jacoco-reports artifact，
+  # 对比 PR head 与 measured_baseline（base/main 实测真相）：
+  #   ① domain 整包 LINE% 是否跌破基线（覆盖率退化）
+  #   ② service.impl 是否新增未测类（new_untested_class）
+  # 命中则发 PR 评论（含可一键采纳的 DEBT 草稿 YAML）。告警非阻断，
+  # 门禁仍由 Gate 2 兜底；不自动写台账文件（避免 fork PR 供应链风险）。
+  # 依赖：build-and-test（拿 head 的 jacoco.csv + 源码扫描）。
+  # 权限前提：pull-requests: write（顶部已授予）。
+  # ------------------------------------------------------------------
+  pr-debt-guard:
+    name: PR - debt guard (Level 2)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: build-and-test
+    permissions:
+      contents: read
+      pull-requests: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download JaCoCo reports artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: jacoco-reports
+          path: downloaded
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run PR debt guard (告警非阻断)
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          python3 scripts/pr-debt-guard.py --pr "$PR" --jacoco-dir downloaded --out coverage-debt-guard.md
+          if [ -s coverage-debt-guard.md ]; then echo "hit=true" >> "$GITHUB_OUTPUT"; else echo "hit=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Post PR comment if guard hit
+        if: steps.guard.outputs.hit == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh pr comment "$PR" --body-file coverage-debt-guard.md
+
+  # ------------------------------------------------------------------
   # Nightly — 自动巡检债务台账（熵管理：手动欠账 → 可自动校验）
   # 仅 schedule 触发时运行。从源码实跑每条 verifiable 项的 check，
   # 比对声明 status；若声明 resolved 但证据已失效（测试被误删/改名），
