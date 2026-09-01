@@ -58,6 +58,15 @@
 
 <!-- ===== 本轮更新横幅 ===== -->
 <div style="background:#e7f7ee;border:1px solid #9fd8b8;border-radius:10px;padding:14px 18px;margin:0 0 16px">
+  <div style="font-size:14px;font-weight:600;color:#1a7a45;margin-bottom:6px">更新 2026-09-02（07:50）· Level 2 PR 债务护栏落地：熵管理巡检 L0→L1→L2 闭环（commit b89d67a）</div>
+  <div style="font-size:13px;color:#2c6b47;line-height:1.7">
+    <b>① 退化捕捉前移到 PR 阶段</b>：新增 <code>scripts/pr-debt-guard.py</code> + <code>ci.yml</code> 的 <code>pr-debt-guard</code> job（<code>on: pull_request</code>，复用 Gate 2 上传的 <code>jacoco-reports</code> artifact），对比 PR head 与 <code>measured_baseline</code>（base/main 实测真相）：<code>domain</code> 整包 LINE% 跌破基线（&gt;0.5pp 容差防浮点误报）→ 覆盖率退化告警；<code>service.impl</code> 新增未测类 → 告警。<br>
+    <b>② 自动生成可一键采纳的 DEBT 草稿</b>：命中时发 PR 评论，内含建议追加的 <code>DEBT-DRAFT-*</code> 草稿 YAML；人类粘贴到台账并改名即纳入 nightly 自动巡检。<b>不自动写台账文件</b>——fork PR 供应链风险 + GITHUB_TOKEN 无 fork 写权，且避免与 Gate 2 硬门禁重复阻断。<b>告警非阻断（exit 0）</b>。<br>
+    <b>③ 反向测试实锤</b>：impl 丢无测试类 <code>TempOrphan.java</code> → 精确命中并生成草稿；放假 <code>jacoco.csv</code>（domain 1%）→ 精确命中退化草稿；均干净还原。<b>修一误报</b>：head 实算 66.6666… 与 base 声明 66.67 的浮点噪声致恒定误报"退化"，加 0.5pp 退化容差消除。
+  </div>
+</div>
+
+<div style="background:#e7f7ee;border:1px solid #9fd8b8;border-radius:10px;padding:14px 18px;margin:0 0 16px">
   <div style="font-size:14px;font-weight:600;color:#1a7a45;margin-bottom:6px">更新 2026-09-02（08:00）· Level 1 债务自动巡检落地：coverage_delta / new_untested_class 监控型 check 已通电（commit ae7c0aa + 0d47475）</div>
   <div style="font-size:13px;color:#2c6b47;line-height:1.7">
     <b>① 熵追踪从 L0 升级到 L1</b>：债务台账自动巡检 <code>.harness/harness-debt.yaml</code> + <code>audit-harness-debt.py</code> 原仅支持 <code>test_exists</code> 验证型（证据失效才记 drift）；<b>本轮新增两种监控型 check</b>——<code>coverage_delta</code>（包覆盖率跌破红线即记欠账）与 <code>new_untested_class</code>（新增类无测试类即记欠账）；<b>监控型 FAIL 即记 drift、恢复 PASS 自动撤销</b>，比 jacoco 门禁更早暴露渐进退化。<br>
@@ -124,10 +133,10 @@
     <div class="bar-row"><div class="bar-name">① 上下文工程</div><div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--green)">90</div></div><span class="delta flat">持平</span></div>
     <div class="bar-row"><div class="bar-name">② 架构约束</div><div class="bar-track"><div class="bar-fill" style="width:93%;background:var(--green)">93</div></div><span class="delta up">92→93 ↑</span></div>
     <div class="bar-row"><div class="bar-name">核心心法 / 棘轮</div><div class="bar-track"><div class="bar-fill" style="width:95%;background:var(--green)">95</div></div><span class="delta up">94→95 ↑</span></div>
-    <div class="bar-row"><div class="bar-name">③ 熵管理</div><div class="bar-track"><div class="bar-fill" style="width:94%;background:var(--green)">94</div></div><span class="delta up">91→94 ↑</span></div>
+    <div class="bar-row"><div class="bar-name">③ 熵管理</div><div class="bar-track"><div class="bar-fill" style="width:96%;background:var(--green)">96</div></div><span class="delta up">94→96 ↑</span></div>
     <div class="bar-row"><div class="bar-name">质量门禁 (CI/Hook)</div><div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--amber)">90</div></div><span class="delta down">92→90 ↓ 修正</span></div>
     <p class="note" style="margin-top:10px">
-    <b>③ 熵管理 74 → <span class="ok">94</span>（持续跃升）</b>：周期性巡检（nightly）已上线，覆盖率趋势可见（徽章 + PR 评论）；<b>基线声明漂移已通过 nightly 自动回写根治</b>（不再人工维护）；<b>2026-09-02 再把"手动熵追踪"从人工维护演进为自动巡检</b>——<code>.harness/harness-debt.yaml</code>（DEBT-001~006）+ 零依赖 <code>audit-harness-debt.py</code> + <code>nightly-audit-debt</code> job，并新增 <code>coverage_delta</code> / <code>new_untested_class</code> 两种<b>监控型 check</b>（FAIL 即记 drift、恢复自动撤销），使退化在门禁破红前即被捕捉。剩余扣分仅 <code>field-sync</code> 仍为 <code>manual_review</code>（守"字段三处同步"的语义一致性，尚无可靠自动判定器，诚实标注）。<br>
+    <b>③ 熵管理 74 → <span class="ok">96</span>（持续跃升）</b>：周期性巡检（nightly）已上线，覆盖率趋势可见（徽章 + PR 评论）；<b>基线声明漂移已通过 nightly 自动回写根治</b>（不再人工维护）；手动熵追踪演进为自动巡检（DEBT-001~006 + 零依赖 <code>audit-harness-debt.py</code> + <code>nightly-audit-debt</code>）；<b>2026-09-02 再把退化捕捉前移到 PR 阶段</b>——<code>pr-debt-guard</code> job 对比 PR head 与 <code>measured_baseline</code>（base 真相），domain 覆盖率退化 / service.impl 新增未测类在 PR 评论里实时告警并附可一键采纳的 DEBT 草稿，熵管理从"nightly 周期（最多延迟 1 天）"前移到"PR 实时"。剩余扣分仅 <code>field-sync</code> 仍为 <code>manual_review</code>（守"字段三处同步"的语义一致性，尚无可靠自动判定器，诚实标注）。<br>
     <b>② 架构约束 92 → 93</b>：分支保护 <code>allow_force_pushes=false</code> 使「约束不可通过改写历史绕过」，架构约束的持久性获得仓库层保障。<br>
     <b>核心心法 94 → 95</b>：棘轮经实算验证（四道门禁全绿、只升不降）；且本轮回退操作自觉采用 <code>git revert</code> 而非强推，体现「约束优先于便利」的纪律。<br>
     <b>质量门禁 92 → 90（下调，非退步，是修正过度声称）</b>：此前报告称 CI 已实现「不可合入的强制」，实测发现<b>直推路径</b>分支保护未对 push 强制——<code>required_status_checks</code> 仅约束 PR 合入。2026-09-01 16:25 已启用该约束，<b>PR 路径现为真阻断</b>；但<b>直推 main 仍不受 CI 约束</b>，CI 在该路径定位为<b>事后检测 + 报告</b>。评分维持 90：因"不可合入强制"仅在 PR 路径成立，直推路径未强制（用户主动保留习惯）。分支保护（防重写/防误删）带来加分相抵后诚实评定，标注为<b>主动取舍</b>而非缺陷。</p>
@@ -195,6 +204,9 @@
       <tr><td><b>监控型 check（覆盖率退化 / 新增未测类）</b>　<span class="badge b-ok">新增</span></td><td><span class="badge b-ok">符合</span></td>
         <td>台账新增 <code>coverage_delta</code>（守护 <code>com.ruoyi.biz.domain</code>，红线 66.00% 比实测 66.67% 留 0.67pp 余量）+ <code>new_untested_class</code>（守护 <code>service.impl</code>）；脚本支持两种监控型 check，FAIL 即记 <code>drift</code>、恢复 PASS 自动撤销</td>
         <td>反向测试已验证两 check 的 FAIL+记漂移路径，并能干净还原</td></tr>
+      <tr><td><b>PR 实时退化护栏（Level 2）</b>　<span class="badge b-ok">新增</span></td><td><span class="badge b-ok">符合</span></td>
+        <td><code>pr-debt-guard</code> job（<code>on: pull_request</code>）对比 PR head 与 <code>measured_baseline</code>，domain 退化 / impl 新增未测类即发 PR 评论（含可一键采纳的 DEBT 草稿）；告警非阻断</td>
+        <td>退化捕捉从 nightly 周期前移到 PR 实时；草稿以评论形式贴出（不自动写台账，规避 fork PR 供应链风险）</td></tr>
       <tr><td>field-sync 自动化</td><td><span class="badge b-part">部分</span></td>
         <td>标注 <code>enforcement: manual_review</code>，诚实承认暂不可自动</td>
         <td>可探索模板生成器兜底</td></tr>
@@ -286,6 +298,7 @@
         <tr><td><b>基线声明漂移</b></td><td><span class="gap">发现不符</span></td><td>声明 <code>domain ~50%（SysProduct 47% / SysStudent 60%）</code>　<b>vs</b>　实测 <code>SysProduct 58.82%</code> / <code>SysStudent 70.97%</code> / <code>包 66.67%</code>——声明值保守失真</td></tr>
         <tr><td><b>↑ 已修正 + 反向测试</b></td><td><span class="ok">双向验证</span></td><td>门槛 <code>0.55</code> → <code>mvn -B clean verify</code> <b>BUILD SUCCESS</b>（7 模块全过 / <code>All coverage checks have been met</code>）；临时顶到 <code>0.70</code> → <b>BUILD FAILURE</b>：<code>Rule violated for class com.ruoyi.biz.domain.SysProduct: lines covered ratio is 0.58, but expected minimum is 0.70</code></td></tr>
         <tr><td>Level 1 监控型 check 是否真生效</td><td><span class="ok">双向验证</span></td><td>临时抬 DEBT-005 红线 66.00%→99.99% → <code>coverage_delta</code> FAIL 并记录 <code>drift</code>，还原复验 0 漂移；impl 包丢无测试类 <code>TempOrphan.java</code> → <code>new_untested_class</code> FAIL 记 <code>drift</code>，删文件+还原复验 0 漂移；另修两隐藏 bug（行内注释解析 / <code>fn[:-9]</code> 误截）</td></tr>
+        <tr><td>Level 2 PR 护栏是否真生效</td><td><span class="ok">双向验证</span></td><td>impl 包丢无测试类 <code>TempOrphan.java</code> → 精确命中并生成 PR 评论草稿；放假 <code>jacoco.csv</code>（domain 1%）→ 精确命中退化草稿；均干净还原。修一浮点误报：head 实算 66.6666… 与 base 声明 66.67 的噪声致恒定误报，加 0.5pp 退化容差消除</td></tr>
       </tbody>
     </table>
   </div>
@@ -304,6 +317,7 @@
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td>分支保护（防 force-push / 防误删）</td><td>架构约束 / 持久性</td><td><b>本轮已完成</b>：仓库转 PUBLIC 解锁 API 后设置，历史不可篡改</td></tr>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td>JaCoCo 覆盖率门禁 + 后端扩面</td><td>Verify 层</td><td>已完成：154 测试，四道门禁实算全 PASS，反向测试证明非假绿</td></tr>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td><b>Level 1 债务自动巡检</b>：<code>coverage_delta</code> + <code>new_untested_class</code> 监控型 check</td><td>熵管理 / 退化捕捉</td><td><b>已完成</b>（commit ae7c0aa + 0d47475）：台账 DEBT-005/006 + 脚本扩展 + <code>nightly-audit-debt</code> 接入 jacoco artifact；反向测试验证两 check FAIL+记 drift 且可还原</td></tr>
+      <tr><td><span class="badge b-ok">P1 ✅</span></td><td><b>Level 2 PR 债务护栏</b>：退化捕捉前移到 PR 实时</td><td>熵管理 / 实时可见</td><td><b>已完成</b>（commit b89d67a）：<code>pr-debt-guard.py</code> + <code>ci.yml</code> 的 <code>pr-debt-guard</code> job，对比 head 与 <code>measured_baseline</code>，命中发 PR 评论（含 DEBT 草稿）；告警非阻断，不自动写台账（规避 fork PR 风险）；反向测试验证两分支+修浮点误报</td></tr>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td>Pre-commit Hook 本地拦截</td><td>质量门禁前置</td><td>已完成：提交前跑文档校验，漂移即阻止（目前唯一的"真阻断"环节）</td></tr>
       <tr><td><span class="badge b-part">暂缓</span></td><td>前端测试（原 P2-4）</td><td>覆盖面</td><td>经决策<b>暂不考虑</b>，不计入缺口；如后续重启，建议只覆盖前端纯函数</td></tr>
     </tbody>
@@ -313,7 +327,7 @@
   <p class="foot">
     评估方法：以 Harness Engineering 三大支柱 + 核心心法为基准，逐条对照 <code>.claude/CLAUDE.md</code>、<code>docs/</code> 与 <code>.harness/enforcement.yml</code>；<b>本轮所有关键结论均通过实际执行命令、查询 GitHub API、解析 <code>jacoco.csv</code> 得出，而非采信文档自述</b>。<br>
     结论：本仓库已达成<b>生产级 Harness</b>——规则有溯源、约束机器可执行、缺陷固化为验收用例、四道覆盖率门禁实算全绿（154 测试）、周期巡检已上线、历史防篡改已就位。评级由 <b>A- 上调至 A</b>。<br>
-    两项待决：<b>(1) CI 门禁分路径</b>——PR 路径已阻断（<code>required_status_checks</code> 生效），直推路径仍报告型；若要彻底禁直推须改用 <code>restrictions</code>（待定）；<b>(2) 前端测试</b>（已决策暂缓）。覆盖率基线漂移已通过 nightly 自动回写根治；债务台账已演进为 Level 1 自动巡检（含 <code>coverage_delta</code> / <code>new_untested_class</code> 监控型 check）。迈向<b>全自动 Harness</b> 的剩余路径：① 是否彻底禁直推（<code>restrictions</code>）；② Level 2（PR 触发时自动追加 DEBT 草稿+评论）仍待定。
+    两项待决：<b>(1) CI 门禁分路径</b>——PR 路径已阻断（<code>required_status_checks</code> 生效），直推路径仍报告型；若要彻底禁直推须改用 <code>restrictions</code>（待定）；<b>(2) 前端测试</b>（已决策暂缓）。覆盖率基线漂移已通过 nightly 自动回写根治；债务台账已演进为 Level 1 自动巡检（<code>coverage_delta</code> / <code>new_untested_class</code> 监控型 check）；<b>Level 2 PR 债务护栏已落地</b>（退化在 PR 阶段实时告警 + 可一键采纳的 DEBT 草稿，熵管理巡检 L0→L1→L2 闭环）。迈向<b>全自动 Harness</b> 的最后一步即"是否彻底禁直推（<code>restrictions</code>）"——会推翻当前直推习惯，待你拍板。
   </p>
 
 </div>
