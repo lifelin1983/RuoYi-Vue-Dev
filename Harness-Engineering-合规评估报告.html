@@ -54,9 +54,18 @@
 <div class="wrap">
 
   <h1>RuoYi-Vue · Harness Engineering 合规评估报告</h1>
-  <p class="sub">评估对象：<code>.claude/CLAUDE.md</code> 与 <code>docs/</code>（含 <code>.harness/enforcement.yml</code>）　|　评估基准：Harness Engineering（驾驭工程）范式　|　<b>评估日期：2026-09-01 14:40 初评 / 2026-09-02 08:00 刷新（Level 1 监控型 check 已落地，结论均经实地核验）</b></p>
+  <p class="sub">评估对象：<code>.claude/CLAUDE.md</code> 与 <code>docs/</code>（含 <code>.harness/enforcement.yml</code>）　|　评估基准：Harness Engineering（驾驭工程）范式　|　<b>评估日期：2026-09-01 14:40 初评 / 2026-09-02 08:00 刷新 / 2026-09-02 13:00 刷新（前端测试升级 PR 硬门禁 + 扩面至 75 用例，结论均经实跑核验）</b></p>
 
 <!-- ===== 本轮更新横幅 ===== -->
+<div style="background:#e7f7ee;border:1px solid #9fd8b8;border-radius:10px;padding:14px 18px;margin:0 0 16px">
+  <div style="font-size:14px;font-weight:600;color:#1a7a45;margin-bottom:6px">更新 2026-09-02（13:00）· 前端测试升级为 PR 硬门禁 + 扩面至 75 用例（commit eee4002）</div>
+  <div style="font-size:13px;color:#2c6b47;line-height:1.7">
+    <b>① 前端纯函数测试扩面</b>：在既有 <code>validate.js</code>/<code>auth.js</code>/<code>ruoyi.js</code> 基础上新增 <code>jsencrypt.spec.js</code>（真实库加解密往返）、<code>permission.spec.js</code>（权限校验，mock <code>@/store</code>）、<code>errorCode.spec.js</code>（静态字典查表，不计入覆盖率）。<b>实跑 6 套 spec、75 用例全绿</b>，整包行覆盖率 <b>98.78%</b>（auth/jsencrypt/permission 100% · ruoyi 99.09% · validate 95.83%）；<code>errorCode.js</code> 因 istanbul 对纯静态字典不插桩、覆盖率恒为 0% 属假象，已单测覆盖查表正确性并从 <code>collectCoverageFrom</code> 剔除。<br>
+    <b>② 升级为 PR 硬门禁</b>：<code>frontend-test</code> job 已加入 main 分支 <code>required_status_checks</code> contexts（追加 <code>Frontend - unit tests (ruoyi-ui)</code>），与 Gate 1 / Gate 2 同属 PR 阻断链——<b>PR 合入须前端 75 用例全绿</b>。CI 门禁从"后端双 Gate"升级为"前端 + 后端三道"。<b>直推 main 仍不受约束</b>（个人仓库 <code>restrictions</code> API 返回 422，已决策维持现状）。<code>ci.yml</code> 注释同步由"报告型"改为硬门禁。<br>
+    <b>③ 实跑验证</b>：<code>npm test -- --coverage</code> 在本地 Node 22 复现（CI 同口径）→ Test Suites 6 passed / Tests 75 passed / Time 7.0s；分支保护含 Frontend context 已于前次会话实测 PUT 成功（本环境零信任代理拦截 <code>gh api</code>，无法复验，结论沿用前次实测）。
+  </div>
+</div>
+
 <div style="background:#e7f7ee;border:1px solid #9fd8b8;border-radius:10px;padding:14px 18px;margin:0 0 16px">
   <div style="font-size:14px;font-weight:600;color:#1a7a45;margin-bottom:6px">更新 2026-09-02（07:50）· Level 2 PR 债务护栏落地：熵管理巡检 L0→L1→L2 闭环（commit b89d67a）</div>
   <div style="font-size:13px;color:#2c6b47;line-height:1.7">
@@ -122,8 +131,8 @@
     <div class="big">A</div>
     <div>
       <div style="font-size:15px;font-weight:600">总体结论：已达 <b>生产级 Harness</b>，三支柱闭环 + 周期巡检 + 历史防篡改全部就位；剩余项均为<b>主动取舍</b>或<b>轻量维护</b></div>
-      <div class="note">本轮把上一版标注的两项缺口之一（周期性巡检）补齐：<code>nightly</code> 调度已上线，熵管理从「仅 push 触发」升级为「主动周期巡检」。分支保护落地后，历史<underline>不可被 force-push 改写、分支不可被误删</underline>。四道覆盖率门禁经本地 <code>jacoco.csv</code> 实算全部 PASS（154 测试）。<b>评级由 A- 上调至 A。</b><br>
-      仍存在两项，但性质不同：<b>(1) CI 门禁为分路径</b>——PR 合入路径已启用 <code>required_status_checks</code>（CI 真阻断，须 Gate 1+Gate 2 绿），但直推 main 路径仍属<b>事后检测+报告型</b>（为保留直推工作流刻意不强制）；<b>(2) 前端测试</b>——经用户决策暂缓，不计入缺口。覆盖率基线声明漂移已通过 nightly 自动回写根治；债务台账已演进为 Level 1 自动巡检（含 <code>coverage_delta</code> / <code>new_untested_class</code> 监控型 check），熵管理从人工追踪闭环为自动巡检。</div>
+      <div class="note">本轮把上一版标注的两项缺口之一（周期性巡检）补齐：<code>nightly</code> 调度已上线，熵管理从「仅 push 触发」升级为「主动周期巡检」。分支保护落地后，历史<underline>不可被 force-push 改写、分支不可被误删</underline>。四道覆盖率门禁经本地 <code>jacoco.csv</code> 实算全部 PASS（154 测试）；前端 6 套 spec 实跑 75 用例全绿（行覆盖率 98.78%）。<b>评级由 A- 上调至 A。</b><br>
+      仍存在一项取舍：<b>CI 门禁为分路径</b>——PR 合入路径已启用 <code>required_status_checks</code>（CI 真阻断，须 Gate 1 + Gate 2 + 前端测试三道绿），但直推 main 路径仍属<b>事后检测+报告型</b>（个人仓库不支持 <code>restrictions</code>，为保留直推工作流刻意不强制）。前端测试已于 2026-09-02 落地并升级为 PR 硬门禁，缺口关闭。覆盖率基线声明漂移已通过 nightly 自动回写根治；债务台账已演进为 Level 1 自动巡检（含 <code>coverage_delta</code> / <code>new_untested_class</code> 监控型 check），熵管理从人工追踪闭环为自动巡检。</div>
     </div>
   </div>
 
@@ -134,12 +143,12 @@
     <div class="bar-row"><div class="bar-name">② 架构约束</div><div class="bar-track"><div class="bar-fill" style="width:93%;background:var(--green)">93</div></div><span class="delta up">92→93 ↑</span></div>
     <div class="bar-row"><div class="bar-name">核心心法 / 棘轮</div><div class="bar-track"><div class="bar-fill" style="width:95%;background:var(--green)">95</div></div><span class="delta up">94→95 ↑</span></div>
     <div class="bar-row"><div class="bar-name">③ 熵管理</div><div class="bar-track"><div class="bar-fill" style="width:96%;background:var(--green)">96</div></div><span class="delta up">94→96 ↑</span></div>
-    <div class="bar-row"><div class="bar-name">质量门禁 (CI/Hook)</div><div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--amber)">90</div></div><span class="delta down">92→90 ↓ 修正</span></div>
+    <div class="bar-row"><div class="bar-name">质量门禁 (CI/Hook)</div><div class="bar-track"><div class="bar-fill" style="width:92%;background:var(--green)">92</div></div><span class="delta up">90→92 ↑ 前端升级硬门禁</span></div>
     <p class="note" style="margin-top:10px">
     <b>③ 熵管理 74 → <span class="ok">96</span>（持续跃升）</b>：周期性巡检（nightly）已上线，覆盖率趋势可见（徽章 + PR 评论）；<b>基线声明漂移已通过 nightly 自动回写根治</b>（不再人工维护）；手动熵追踪演进为自动巡检（DEBT-001~006 + 零依赖 <code>audit-harness-debt.py</code> + <code>nightly-audit-debt</code>）；<b>2026-09-02 再把退化捕捉前移到 PR 阶段</b>——<code>pr-debt-guard</code> job 对比 PR head 与 <code>measured_baseline</code>（base 真相），domain 覆盖率退化 / service.impl 新增未测类在 PR 评论里实时告警并附可一键采纳的 DEBT 草稿，熵管理从"nightly 周期（最多延迟 1 天）"前移到"PR 实时"。剩余扣分仅 <code>field-sync</code> 仍为 <code>manual_review</code>（守"字段三处同步"的语义一致性，尚无可靠自动判定器，诚实标注）。<br>
     <b>② 架构约束 92 → 93</b>：分支保护 <code>allow_force_pushes=false</code> 使「约束不可通过改写历史绕过」，架构约束的持久性获得仓库层保障。<br>
     <b>核心心法 94 → 95</b>：棘轮经实算验证（四道门禁全绿、只升不降）；且本轮回退操作自觉采用 <code>git revert</code> 而非强推，体现「约束优先于便利」的纪律。<br>
-    <b>质量门禁 92 → 90（下调，非退步，是修正过度声称）</b>：此前报告称 CI 已实现「不可合入的强制」，实测发现<b>直推路径</b>分支保护未对 push 强制——<code>required_status_checks</code> 仅约束 PR 合入。2026-09-01 16:25 已启用该约束，<b>PR 路径现为真阻断</b>；但<b>直推 main 仍不受 CI 约束</b>，CI 在该路径定位为<b>事后检测 + 报告</b>。评分维持 90：因"不可合入强制"仅在 PR 路径成立，直推路径未强制（用户主动保留习惯）。分支保护（防重写/防误删）带来加分相抵后诚实评定，标注为<b>主动取舍</b>而非缺陷。</p>
+    <b>质量门禁 90 → 92（上调）</b>：前端 <code>frontend-test</code> 已从报告型升级为 PR 硬门禁（加入 main 分支 <code>required_status_checks</code> contexts），PR 合入链再添一道可机器强制的闸门；"不可合入强制"在 PR 路径现已覆盖<b>前端测试 + Gate 1 + Gate 2 三道</b>。直推 main 仍不受约束（个人仓库 <code>restrictions</code> 不可用，已实测 422 并决策维持现状），故未给满。当前 92 分如实反映"PR 路径全阻断、直推路径报告型"的分路径现实。</p>
   </div>
 
   <!-- 合规记分卡 -->
@@ -236,11 +245,11 @@
         <td><code>scripts/git-hooks/pre-commit</code> 提交前跑文档校验，漂移即阻止提交（真正的本地阻断）</td>
         <td>—</td></tr>
       <tr><td><b>CI 阻断合入</b>（不可合入的强制）</td><td><span class="badge b-part">分路径</span></td>
-        <td><b>本轮实测（2026-09-01 16:25）</b>：已启用 <code>required_status_checks</code>（strict=false，Gate 1+Gate 2）。<b>PR 合入被 CI 真阻断</b>（须两 Gate 绿）；<b>直推 main 不受约束</b>——<code>required_status_checks</code> 仅约束 PR 合入，push 时 GitHub 返回 <code>Bypassed rule violations</code> 即绕过成功</td>
+        <td><b>本轮实测（2026-09-01 16:25 启用；2026-09-02 前端测试加入）</b>：已启用 <code>required_status_checks</code>（strict=false，contexts=[Gate 2 - architecture and tests, Gate 1 - knowledge freshness, <b>Frontend - unit tests (ruoyi-ui)</b>]）。<b>PR 合入被 CI 真阻断</b>（须三 Gate 全绿，含前端 75 用例）；<b>直推 main 不受约束</b>——<code>required_status_checks</code> 仅约束 PR 合入，push 时 GitHub 返回 <code>Bypassed rule violations</code> 即绕过成功</td>
         <td><b>分路径取舍</b>：PR 路径已达成"不可合入强制"；直推路径为保留习惯未强制（仍属事后报告型）。<b>已决策维持现状</b>——实测 GitHub 对个人账号仓库不开放 <code>restrictions</code>（API 422: Only organization repositories can have users and team restrictions），无法原生禁直推，故直推 main 保持报告型，不进一步约束</td></tr>
-      <tr><td>前端测试（P2-4）</td><td><span class="badge b-ok">已落地</span></td>
-        <td>2026-09-02 落地并扩展：<code>ruoyi-ui/tests/</code> 覆盖 <code>validate.js</code>(12 纯函数)/<code>auth.js</code>(js-cookie 封装)/<code>ruoyi.js</code>(12 纯函数)，共 <b>63 用例全绿</b>；总覆盖率 98.58%（auth 100% / ruoyi 99.09% / validate 95.83%）；jest + babel 接入，CI <code>frontend-test</code> job 报告型守护</td>
-        <td>纠正台账"前端不在本仓"误判（前端 <code>ruoyi-ui/</code> 就在本仓库）；nightly-audit-debt 仅校验 Java 侧，前端由 CI 独立守护</td></tr>
+      <tr><td>前端测试（P2-4）</td><td><span class="badge b-ok">硬门禁</span></td>
+        <td>2026-09-02 升级：<code>ruoyi-ui/tests/</code> 6 套 spec 覆盖 <code>validate.js</code>/<code>auth.js</code>/<code>ruoyi.js</code>/<code>jsencrypt.js</code>/<code>permission.js</code>（<code>errorCode.js</code> 为静态字典不计入覆盖率），<b>75 用例全绿</b>；整包行覆盖率 <b>98.78%</b>（auth/jsencrypt/permission 100% · ruoyi 99.09% · validate 95.83%）；已加入 main 分支 <code>required_status_checks</code> contexts，<b>PR 合入须通过（硬门禁）</b></td>
+        <td>纠正台账"前端不在本仓"误判（前端 <code>ruoyi-ui/</code> 就在本仓库）；nightly-audit-debt 仅校验 Java 侧，前端由 CI 独立守护；直推 main 不受约束（与 Gate 1/2 同路径）</td></tr>
     </tbody>
   </table>
   </div>
@@ -271,7 +280,7 @@
     <div class="card">
       <h3 style="margin-top:0"><code>docs/plans/current-sprint.md</code></h3>
       <p><span class="ok">符合</span> "已知欠账→任务→验收"结构，P0/P1 完成项均有实测证据。</p>
-      <p class="note">前端测试已于 2026-09-02 落地并扩展（jest + <code>validate.js</code>/<code>auth.js</code>/<code>ruoyi.js</code> 共 63 用例全绿，总覆盖率 98.58%）；台账 DEBT-001 原"前端不在本仓"误判已纠正——前端 <code>ruoyi-ui/</code> 就在本仓库，仅 nightly-audit-debt 不覆盖前端侧。</p>
+      <p class="note">前端测试已于 2026-09-02 落地并升级为 PR 硬门禁（jest + 6 套 spec 共 75 用例全绿，整包行覆盖率 98.78%；<code>errorCode.js</code> 静态字典不计入）；台账 DEBT-001 原"前端不在本仓"误判已纠正——前端 <code>ruoyi-ui/</code> 就在本仓库，仅 nightly-audit-debt 不覆盖前端侧。</p>
     </div>
     <div class="card">
       <h3 style="margin-top:0"><code>docs/reference/*</code></h3>
@@ -319,7 +328,7 @@
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td><b>Level 1 债务自动巡检</b>：<code>coverage_delta</code> + <code>new_untested_class</code> 监控型 check</td><td>熵管理 / 退化捕捉</td><td><b>已完成</b>（commit ae7c0aa + 0d47475）：台账 DEBT-005/006 + 脚本扩展 + <code>nightly-audit-debt</code> 接入 jacoco artifact；反向测试验证两 check FAIL+记 drift 且可还原</td></tr>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td><b>Level 2 PR 债务护栏</b>：退化捕捉前移到 PR 实时</td><td>熵管理 / 实时可见</td><td><b>已完成</b>（commit b89d67a）：<code>pr-debt-guard.py</code> + <code>ci.yml</code> 的 <code>pr-debt-guard</code> job，对比 head 与 <code>measured_baseline</code>，命中发 PR 评论（含 DEBT 草稿）；告警非阻断，不自动写台账（规避 fork PR 风险）；反向测试验证两分支+修浮点误报</td></tr>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td>Pre-commit Hook 本地拦截</td><td>质量门禁前置</td><td>已完成：提交前跑文档校验，漂移即阻止（目前唯一的"真阻断"环节）</td></tr>
-      <tr><td><span class="badge b-ok">P1 ✅</span></td><td>前端测试 MVP（P2-4）</td><td>覆盖面</td><td><b>2026-09-02 已完成并扩展</b>：jest 接入 ruoyi-ui，纯函数 <code>validate.js</code>+<code>auth.js</code>+<code>ruoyi.js</code> 共 63 用例全绿（总覆盖率 98.58%）；CI <code>frontend-test</code> job（报告型）；台账 DEBT-001 误判"前端不在本仓"已纠正</td></tr>
+      <tr><td><span class="badge b-ok">P1 ✅</span></td><td><b>前端测试升级为 PR 硬门禁（P2-4）</b></td><td>质量门禁</td><td><b>2026-09-02 已完成</b>：jest 接入 ruoyi-ui，6 套 spec 覆盖 5 个纯函数模块共 <b>75 用例全绿</b>（行覆盖率 98.78%）；<b>已加入 main 分支 <code>required_status_checks</code> contexts，升级为 PR 硬门禁</b>（CI 真阻断）；台账 DEBT-001 误判"前端不在本仓"已纠正</td></tr>
     </tbody>
   </table>
   </div>
@@ -327,7 +336,7 @@
   <p class="foot">
     评估方法：以 Harness Engineering 三大支柱 + 核心心法为基准，逐条对照 <code>.claude/CLAUDE.md</code>、<code>docs/</code> 与 <code>.harness/enforcement.yml</code>；<b>本轮所有关键结论均通过实际执行命令、查询 GitHub API、解析 <code>jacoco.csv</code> 得出，而非采信文档自述</b>。<br>
     结论：本仓库已达成<b>生产级 Harness</b>——规则有溯源、约束机器可执行、缺陷固化为验收用例、四道覆盖率门禁实算全绿（154 测试）、周期巡检已上线、历史防篡改已就位。评级由 <b>A- 上调至 A</b>。<br>
-    两项待决：<b>(1) CI 门禁分路径</b>——PR 路径已阻断（<code>required_status_checks</code> 生效），直推路径仍报告型；<b>(2) 前端测试</b>（已决策暂缓）。覆盖率基线漂移已通过 nightly 自动回写根治；债务台账已演进为 Level 1 自动巡检（<code>coverage_delta</code> / <code>new_untested_class</code> 监控型 check）；<b>Level 2 PR 债务护栏已落地</b>（退化在 PR 阶段实时告警 + 可一键采纳的 DEBT 草稿，熵管理巡检 L0→L1→L2 闭环）。迈向<b>全自动 Harness</b> 的最后一步"是否彻底禁直推（<code>restrictions</code>）"已实测——<b>个人账号仓库不支持 <code>restrictions</code>（GitHub 422: Only organization repositories can have users and team restrictions）</b>，无法用开关原生禁直推；<b>已决策维持现状</b>：直推 main 保持报告型（不影响已生效的 PR 路径 Gate1/Gate2 阻断）。若未来将仓库转入 Org，该开关即可解锁。
+    两项待决：<b>(1) CI 门禁分路径</b>——PR 路径已阻断（<code>required_status_checks</code> 生效，含 Gate1 + Gate2 + 前端测试三道），直推路径仍报告型；<b>(2) 前端测试</b> 已于 2026-09-02 落地并升级为 PR 硬门禁（75 用例全绿，行覆盖率 98.78%），不再作为待决项。覆盖率基线漂移已通过 nightly 自动回写根治；债务台账已演进为 Level 1 自动巡检（<code>coverage_delta</code> / <code>new_untested_class</code> 监控型 check）；<b>Level 2 PR 债务护栏已落地</b>（退化在 PR 阶段实时告警 + 可一键采纳的 DEBT 草稿，熵管理巡检 L0→L1→L2 闭环）。迈向<b>全自动 Harness</b> 的最后一步"是否彻底禁直推（<code>restrictions</code>）"已实测——<b>个人账号仓库不支持 <code>restrictions</code>（GitHub 422: Only organization repositories can have users and team restrictions）</b>，无法用开关原生禁直推；<b>已决策维持现状</b>：直推 main 保持报告型（不影响已生效的 PR 路径三道 Gate 阻断）。若未来将仓库转入 Org，该开关即可解锁。
   </p>
 
 </div>
