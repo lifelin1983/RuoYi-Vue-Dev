@@ -5,6 +5,32 @@
 
 ---
 
+## 2026-09-02 · v3.9.2-docs-b · 全项目文件汇总清单（分散文件树 → 8 大类可交付资产总表）
+
+- **涉及模块**：新增 `docs/architecture/project-file-catalog.md`
+- **原功能**：项目文件清单散落在目录树、对话与零散说明里，无一份"文件名 / 详细功能 / 原理 / 逻辑 / 使用方法"的统一总表；新人接手或审计时无从快速定位，且分不清哪些是脚手架、哪些是 Harness 治理产物。
+- **更新后功能**：新建 `project-file-catalog.md`，按 8 大类汇总全仓文件：① AI/Harness 治理层（CLAUDE.md / enforcement.yml / harness-debt.yaml / scripts / ci.yml）② 配置与构建（各 pom.xml / .gitignore / babel.config.js 等）③ 后端业务模块（ruoyi-common / ruoyi-system / ruoyi-admin / ruoyi-framework）④ 前端模块 ruoyi-ui（按目录描述，约 3 万文件不逐一列举）⑤ 文档与规范 docs/（architecture / conventions）⑥ 业务数据 sql/（初始化 + 业务表）⑦ 其他根文件（README / LICENSE / .editorconfig）⑧ 范围与待办标注（排除 node_modules/target/.idea；标注 `[脚手架]`/`[Harness]`；列出 planned-but-not-created 文件如 `modules/teacher.yaml`、`scripts/scaffold-module.py`）。
+- **变更原因**：用户要求"从最开始到现在所有文件汇总一份"，作为项目资产清单，同时为 Harness 落地提供可审计的文档佐证。
+- **影响范围**：纯文档，无代码 / 阈值 / 构建变化。
+- **验证 / 回归点**：
+  - ✅ 实读复核：`git status` / `ls` 核验文件树；Read 复核 `scripts/check-doc-links.sh`、`scripts/setup-hooks.sh`、`ruoyi-admin/.../biz/controller/SysProductController.java` 确保目录原理/逻辑描述准确。
+  - **回归点**：新增文件须同步补进本总表对应大类；删除文件须同步移出，保持"清单 = 实际文件树"。
+
+---
+
+## 2026-09-02 · v3.9.2-docs-a · Harness Engineering 架构与原理说明（机器约束散落 → 统一可交付文档）
+
+- **涉及模块**：新增 `docs/architecture/harness-engineering.md`
+- **原功能**：Harness Engineering 的架构与原理只散落在 `.harness/enforcement.yml`、`.claude/CLAUDE.md`、`scripts/*`、`ci.yml` 与对话记录里，缺一份统一、可交付、讲清"为什么这么设计"的说明文档。
+- **更新后功能**：新建 `harness-engineering.md`，8 节系统说明——① 核心理念（Agent failures are harness failures）② 四层架构（真相源层 / 强制引擎层 / CI-CD 闸门层 / 仓库保护）③ 熵管理闭环 L0→L1→L2（验证型 check → 监控型 check → PR 债务护栏）④ 棘轮效应 + nightly 基线自动回写（策略归人、观测归机器）⑤ 禁 Lombok 动因 ⑥ 覆盖率门禁矩阵（service.impl 100% / biz.domain 55% / biz 60% / common.utils 85%）⑦ CI 三道闸门 + 仓库保护 ⑧ 文档机制（docs/ + .harness/ + .workbuddy/memory/ 三域隔离、单一真相源防双源漂移、Gate 1 + pre-commit 校验）。附两张内联 SVG（分层架构图、熵管理闭环图），所有论断均对照真实文件而非记忆。
+- **变更原因**：把机器可读、机器强制约束的"设计意图"沉淀为可交付文档，便于团队评审、交接与后续演进。
+- **影响范围**：纯文档，无代码 / 阈值 / 构建变化；与 `docs/architecture/overview.md`、`boundaries.md` 形成架构文档矩阵（总览 / 边界 / Harness 原理）。
+- **验证 / 回归点**：
+  - ✅ 实读复核：逐项对照 `enforcement.yml`、`ci.yml`、`scripts/audit-harness-debt.py`、`pr-debt-guard.py`、`sync-coverage-baseline.py`、`pom.xml` 的门禁配置，确保文档与代码一致。
+  - **回归点**：今后若调整门禁阈值 / 架构分层，须同步更新本说明对应章节，保持"文档 = 实际约束"。
+
+---
+
 ## 2026-09-01 · v3.9.2-harness-p1g · 熵追踪台账结构化 + nightly 自动巡检（手动欠账 → 可演进自动巡检）
 
 - **涉及模块**：新增 `.harness/harness-debt.yaml`、`scripts/audit-harness-debt.py`；改动 `.github/workflows/ci.yml`、`.harness/enforcement.yml`
