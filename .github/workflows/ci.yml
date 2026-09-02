@@ -199,10 +199,12 @@ jobs:
           if-no-files-found: ignore
 
   # ------------------------------------------------------------------
-  # 前端单元测试（P2-4：前端纯函数覆盖，报告型）
-  # 独立于后端门禁运行；当前覆盖 ruoyi-ui/src/utils 纯函数（validate.js 等）。
-  # 报告型：不加入 required_status_checks，job 失败仅在 PR 界面可见，不阻断合入；
-  #   若未来要硬阻断，把本 job 名加入 main 分支保护的 required_status_checks contexts。
+  # 前端单元测试（P2-4：前端纯函数覆盖，硬门禁）
+  # 独立于后端门禁运行；当前覆盖 ruoyi-ui/src/utils 5 个纯函数模块
+  #   （validate.js / auth.js / ruoyi.js / jsencrypt.js / permission.js），
+  #   共 75 用例全绿，整包行覆盖率 98.78%（errorCode.js 为静态字典不计入）。
+  # 硬门禁：已加入 main 分支的 required_status_checks contexts，
+  #   PR 合入须本 job 通过（与 Gate 1 / Gate 2 同属 PR 阻断链）；直推 main 仍不受约束。
   # 运行环境 Node 22（与本地一致），复用项目 babel.config.js，无需额外 babel 配置。
   # ------------------------------------------------------------------
   frontend-test:
@@ -222,7 +224,7 @@ jobs:
         working-directory: ruoyi-ui
         run: npm install --no-audit --no-fund
 
-      - name: Run jest (validate.js 纯函数) + coverage
+      - name: Run jest (前端纯函数) + coverage
         working-directory: ruoyi-ui
         run: npm test -- --coverage
 
