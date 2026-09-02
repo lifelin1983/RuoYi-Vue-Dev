@@ -38,11 +38,12 @@ items:
   # ---- 欠账（原 enforcement.yml 的 still_missing） ----
   - id: DEBT-001
     kind: missing_test
-    title: 前端测试（ruoyi-ui）
+    title: 前端测试（ruoyi-ui）— MVP 纯函数覆盖已落地
     priority: P3
-    status: open
-    verifiable: false           # 前端代码不在本仓库，nightly 无法自动校验
-    rationale: 经用户决策暂缓，不计入缺口；前端不在本仓，无法自动验证
+    status: mitigated
+    verifiable: false           # nightly-audit-debt 仅校验 Java 侧；前端 jest 由 CI frontend-test job 独立守护
+    rationale: 此前"前端不在本仓"误判——ruoyi-ui/ 就在本仓库；真实边界是 nightly-audit-debt(Python)只扫 Java 测试类，无法校验前端 jest。2026-09-02 已落地 MVP：ruoyi-ui/tests/validate.spec.js 覆盖 validate.js 12 纯函数(25 用例全绿，覆盖率 95.83%)；前端测试由 CI frontend-test job 独立守护(报告型)。
+    resolved_at: 2026-09-02
     created: 2026-09-01
     decided_by: linjun
 
