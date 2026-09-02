@@ -237,7 +237,7 @@
         <td>—</td></tr>
       <tr><td><b>CI 阻断合入</b>（不可合入的强制）</td><td><span class="badge b-part">分路径</span></td>
         <td><b>本轮实测（2026-09-01 16:25）</b>：已启用 <code>required_status_checks</code>（strict=false，Gate 1+Gate 2）。<b>PR 合入被 CI 真阻断</b>（须两 Gate 绿）；<b>直推 main 不受约束</b>——<code>required_status_checks</code> 仅约束 PR 合入，push 时 GitHub 返回 <code>Bypassed rule violations</code> 即绕过成功</td>
-        <td><b>分路径取舍</b>：PR 路径已达成"不可合入强制"；直推路径为保留习惯未强制（仍属事后报告型）。若要彻底禁直推须改用 <code>restrictions</code>（限制可 push 人员），会推翻直推习惯，待定</td></tr>
+        <td><b>分路径取舍</b>：PR 路径已达成"不可合入强制"；直推路径为保留习惯未强制（仍属事后报告型）。<b>已决策维持现状</b>——实测 GitHub 对个人账号仓库不开放 <code>restrictions</code>（API 422: Only organization repositories can have users and team restrictions），无法原生禁直推，故直推 main 保持报告型，不进一步约束</td></tr>
       <tr><td>前端测试（P2-4）</td><td><span class="badge b-part">暂缓</span></td>
         <td><code>enforcement.yml</code> 的 <code>still_missing</code> 仅此一项</td>
         <td>经用户决策「前端测试暂时不考虑」，<b>不计入缺口</b></td></tr>
@@ -311,7 +311,7 @@
     <tbody>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td><b>同步覆盖率基线 + 门槛棘轮上调</b>：4 处声明改为实测值；<code>domain</code> 门槛 <b>0.40 → 0.55</b>（<b>非</b>原计划的 0.60，因 CLASS 级规则受最弱类 SysProduct 58.82% 约束）</td><td>熵管理 / 基线漂移</td><td><b>2026-09-01 15:30 已完成</b>并经反向测试双向验证；恢复"声明=实际"，棘轮精度恢复</td></tr>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td><b>基线回写自动化</b>：nightly 任务把实测覆盖率回写 <code>enforcement.yml</code> 的 <code>measured_baseline</code></td><td>熵管理 / 防漂移</td><td><b>已完成</b>：<code>scripts/sync-coverage-baseline.py</code> + <code>ci.yml</code> 的 <code>nightly-sync-baseline</code> job（commit 8976f9a 等），根治"人工声明滞后"</td></tr>
-      <tr><td><span class="badge b-ok">P1 ✅</span></td><td><b>启用 <code>required_status_checks</code></b>（Gate1/Gate2）</td><td>质量门禁 / 不可合入</td><td><b>本轮已完成</b>（2026-09-01 16:25，commit 16d6b8d）：PR 路径 CI 真阻断（须 Gate1+Gate2 绿）；直推路径仍报告型（GitHub 不拦直推）。若要彻底禁直推须改用 <code>restrictions</code>（待定）</td></tr>
+      <tr><td><span class="badge b-ok">P1 ✅</span></td><td><b>启用 <code>required_status_checks</code></b>（Gate1/Gate2）</td><td>质量门禁 / 不可合入</td><td><b>本轮已完成</b>（2026-09-01 16:25，commit 16d6b8d）：PR 路径 CI 真阻断（须 Gate1+Gate2 绿）；直推路径仍报告型（GitHub 不拦直推）。<b>已决策维持现状</b>：实测个人仓库无法用 <code>restrictions</code> 原生禁直推（GitHub 422 限制），保留直推习惯</td></tr>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td>周期性巡检（nightly）已落地</td><td>熵管理 / 周期巡检</td><td><b>本轮已完成</b>：<code>ci.yml</code> <code>on.schedule</code> 北京 02:00 重跑全部门禁，补上此前唯一实质缺口</td></tr>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td>门禁可见性（覆盖率趋势 + PR 评论）</td><td>Verify / 可观测</td><td><b>本轮已完成</b>：Aggregate 生成 <code>coverage-badge.svg</code>（84.50%），口径与门禁严格一致</td></tr>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td>分支保护（防 force-push / 防误删）</td><td>架构约束 / 持久性</td><td><b>本轮已完成</b>：仓库转 PUBLIC 解锁 API 后设置，历史不可篡改</td></tr>
@@ -327,7 +327,7 @@
   <p class="foot">
     评估方法：以 Harness Engineering 三大支柱 + 核心心法为基准，逐条对照 <code>.claude/CLAUDE.md</code>、<code>docs/</code> 与 <code>.harness/enforcement.yml</code>；<b>本轮所有关键结论均通过实际执行命令、查询 GitHub API、解析 <code>jacoco.csv</code> 得出，而非采信文档自述</b>。<br>
     结论：本仓库已达成<b>生产级 Harness</b>——规则有溯源、约束机器可执行、缺陷固化为验收用例、四道覆盖率门禁实算全绿（154 测试）、周期巡检已上线、历史防篡改已就位。评级由 <b>A- 上调至 A</b>。<br>
-    两项待决：<b>(1) CI 门禁分路径</b>——PR 路径已阻断（<code>required_status_checks</code> 生效），直推路径仍报告型；若要彻底禁直推须改用 <code>restrictions</code>（待定）；<b>(2) 前端测试</b>（已决策暂缓）。覆盖率基线漂移已通过 nightly 自动回写根治；债务台账已演进为 Level 1 自动巡检（<code>coverage_delta</code> / <code>new_untested_class</code> 监控型 check）；<b>Level 2 PR 债务护栏已落地</b>（退化在 PR 阶段实时告警 + 可一键采纳的 DEBT 草稿，熵管理巡检 L0→L1→L2 闭环）。迈向<b>全自动 Harness</b> 的最后一步即"是否彻底禁直推（<code>restrictions</code>）"——会推翻当前直推习惯，待你拍板。
+    两项待决：<b>(1) CI 门禁分路径</b>——PR 路径已阻断（<code>required_status_checks</code> 生效），直推路径仍报告型；<b>(2) 前端测试</b>（已决策暂缓）。覆盖率基线漂移已通过 nightly 自动回写根治；债务台账已演进为 Level 1 自动巡检（<code>coverage_delta</code> / <code>new_untested_class</code> 监控型 check）；<b>Level 2 PR 债务护栏已落地</b>（退化在 PR 阶段实时告警 + 可一键采纳的 DEBT 草稿，熵管理巡检 L0→L1→L2 闭环）。迈向<b>全自动 Harness</b> 的最后一步"是否彻底禁直推（<code>restrictions</code>）"已实测——<b>个人账号仓库不支持 <code>restrictions</code>（GitHub 422: Only organization repositories can have users and team restrictions）</b>，无法用开关原生禁直推；<b>已决策维持现状</b>：直推 main 保持报告型（不影响已生效的 PR 路径 Gate1/Gate2 阻断）。若未来将仓库转入 Org，该开关即可解锁。
   </p>
 
 </div>
