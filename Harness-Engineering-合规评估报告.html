@@ -239,7 +239,7 @@
         <td><b>本轮实测（2026-09-01 16:25）</b>：已启用 <code>required_status_checks</code>（strict=false，Gate 1+Gate 2）。<b>PR 合入被 CI 真阻断</b>（须两 Gate 绿）；<b>直推 main 不受约束</b>——<code>required_status_checks</code> 仅约束 PR 合入，push 时 GitHub 返回 <code>Bypassed rule violations</code> 即绕过成功</td>
         <td><b>分路径取舍</b>：PR 路径已达成"不可合入强制"；直推路径为保留习惯未强制（仍属事后报告型）。<b>已决策维持现状</b>——实测 GitHub 对个人账号仓库不开放 <code>restrictions</code>（API 422: Only organization repositories can have users and team restrictions），无法原生禁直推，故直推 main 保持报告型，不进一步约束</td></tr>
       <tr><td>前端测试（P2-4）</td><td><span class="badge b-ok">已落地</span></td>
-        <td>2026-09-02 已落地 MVP：<code>ruoyi-ui/tests/validate.spec.js</code> 覆盖 <code>validate.js</code> 12 纯函数（25 用例全绿，覆盖率 95.83%）；jest + babel 接入，CI <code>frontend-test</code> job 报告型守护</td>
+        <td>2026-09-02 落地并扩展：<code>ruoyi-ui/tests/</code> 覆盖 <code>validate.js</code>(12 纯函数)/<code>auth.js</code>(js-cookie 封装)/<code>ruoyi.js</code>(12 纯函数)，共 <b>63 用例全绿</b>；总覆盖率 98.58%（auth 100% / ruoyi 99.09% / validate 95.83%）；jest + babel 接入，CI <code>frontend-test</code> job 报告型守护</td>
         <td>纠正台账"前端不在本仓"误判（前端 <code>ruoyi-ui/</code> 就在本仓库）；nightly-audit-debt 仅校验 Java 侧，前端由 CI 独立守护</td></tr>
     </tbody>
   </table>
@@ -271,7 +271,7 @@
     <div class="card">
       <h3 style="margin-top:0"><code>docs/plans/current-sprint.md</code></h3>
       <p><span class="ok">符合</span> "已知欠账→任务→验收"结构，P0/P1 完成项均有实测证据。</p>
-      <p class="note">前端测试已于 2026-09-02 落地 MVP（jest + <code>validate.js</code> 纯函数 25 用例全绿）；台账 DEBT-001 原"前端不在本仓"误判已纠正——前端 <code>ruoyi-ui/</code> 就在本仓库，仅 nightly-audit-debt 不覆盖前端侧。</p>
+      <p class="note">前端测试已于 2026-09-02 落地并扩展（jest + <code>validate.js</code>/<code>auth.js</code>/<code>ruoyi.js</code> 共 63 用例全绿，总覆盖率 98.58%）；台账 DEBT-001 原"前端不在本仓"误判已纠正——前端 <code>ruoyi-ui/</code> 就在本仓库，仅 nightly-audit-debt 不覆盖前端侧。</p>
     </div>
     <div class="card">
       <h3 style="margin-top:0"><code>docs/reference/*</code></h3>
@@ -319,7 +319,7 @@
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td><b>Level 1 债务自动巡检</b>：<code>coverage_delta</code> + <code>new_untested_class</code> 监控型 check</td><td>熵管理 / 退化捕捉</td><td><b>已完成</b>（commit ae7c0aa + 0d47475）：台账 DEBT-005/006 + 脚本扩展 + <code>nightly-audit-debt</code> 接入 jacoco artifact；反向测试验证两 check FAIL+记 drift 且可还原</td></tr>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td><b>Level 2 PR 债务护栏</b>：退化捕捉前移到 PR 实时</td><td>熵管理 / 实时可见</td><td><b>已完成</b>（commit b89d67a）：<code>pr-debt-guard.py</code> + <code>ci.yml</code> 的 <code>pr-debt-guard</code> job，对比 head 与 <code>measured_baseline</code>，命中发 PR 评论（含 DEBT 草稿）；告警非阻断，不自动写台账（规避 fork PR 风险）；反向测试验证两分支+修浮点误报</td></tr>
       <tr><td><span class="badge b-ok">P1 ✅</span></td><td>Pre-commit Hook 本地拦截</td><td>质量门禁前置</td><td>已完成：提交前跑文档校验，漂移即阻止（目前唯一的"真阻断"环节）</td></tr>
-      <tr><td><span class="badge b-ok">P1 ✅</span></td><td>前端测试 MVP（P2-4）</td><td>覆盖面</td><td><b>2026-09-02 已完成</b>：jest 接入 ruoyi-ui，纯函数 <code>validate.js</code> 12 函数 25 用例全绿；CI <code>frontend-test</code> job（报告型）；台账 DEBT-001 误判"前端不在本仓"已纠正</td></tr>
+      <tr><td><span class="badge b-ok">P1 ✅</span></td><td>前端测试 MVP（P2-4）</td><td>覆盖面</td><td><b>2026-09-02 已完成并扩展</b>：jest 接入 ruoyi-ui，纯函数 <code>validate.js</code>+<code>auth.js</code>+<code>ruoyi.js</code> 共 63 用例全绿（总覆盖率 98.58%）；CI <code>frontend-test</code> job（报告型）；台账 DEBT-001 误判"前端不在本仓"已纠正</td></tr>
     </tbody>
   </table>
   </div>
